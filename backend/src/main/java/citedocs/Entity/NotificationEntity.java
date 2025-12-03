@@ -16,50 +16,47 @@ public class NotificationEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int notificationId;
+    @Column(name = "notification_id")
+    private Integer id;
 
-    @Column(name = "user_id", nullable = false)
-    private int userId;
-
-    @Column(name = "request_id", nullable = false)
-    private int requestId;
-
-    @Column(columnDefinition = "TEXT", nullable = false)
-    private String message;
-
-    @Column(name = "is_read")
-    private boolean isRead;
-
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "message", columnDefinition = "TEXT", nullable = false)
+    private String message;
+
+    @Column(name = "is_read", nullable = false)
+    private boolean isRead = false;
+
+    @Column(name = "request_id")
+    private Integer requestId;
+
+    @Column(name = "user_id", nullable = false)
+    private Integer userId;
+
     @PrePersist
-    private void onCreate() {
-        createdAt = LocalDateTime.now();
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
     }
 
-    public int getNotificationId() {
-        return notificationId;
+    // ====== GETTERS & SETTERS ======
+
+    public Integer getId() {
+        return id;
     }
 
-    public void setNotificationId(int notificationId) {
-        this.notificationId = notificationId;
+    public void setId(Integer id) {
+        this.id = id;
     }
 
-    public int getUserId() {
-        return userId;
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
     }
 
-    public void setUserId(int userId) {
-        this.userId = userId;
-    }
-
-    public int getRequestId() {
-        return requestId;
-    }
-
-    public void setRequestId(int requestId) {
-        this.requestId = requestId;
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
     public String getMessage() {
@@ -78,11 +75,19 @@ public class NotificationEntity {
         this.isRead = isRead;
     }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
+    public Integer getRequestId() {
+        return requestId;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
+    public void setRequestId(Integer requestId) {
+        this.requestId = requestId;
+    }
+
+    public Integer getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Integer userId) {
+        this.userId = userId;
     }
 }

@@ -1,14 +1,22 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuthContext } from "../../../auth/context/AuthContext";
 import appLogo from "../../../../assets/images/app_logo.png";
 
+import {
+  getNotifications,
+  deleteNotification,
+  markNotificationRead,
+} from "../../../../api/notifications";
+
 const Header = ({ studentName }) => {
   const [showNotifications, setShowNotifications] = useState(false);
-  const navigate = useNavigate();
-  const { logout, user } = useAuthContext(); // ✅ Access logout function from context
+  const [notifications, setNotifications] = useState([]);
 
-  // Get user initials from name
+  const navigate = useNavigate();
+  const { logout, user, token } = useAuthContext();
+
+  // initials
   const getUserInitials = (name) => {
     if (!name) return "U";
     const parts = name.trim().split(" ");
@@ -20,15 +28,55 @@ const Header = ({ studentName }) => {
 
   const userInitials = getUserInitials(user?.name || studentName);
 
-  const notifications = [
-    { id: 1, message: "REQ-2025-001 is now processing", time: "2 hours ago", unread: true },
-    { id: 2, message: "Payment confirmed for REQ-2025-002", time: "1 day ago", unread: true },
-    { id: 3, message: "Document REQ-2025-003 ready for pickup", time: "2 days ago", unread: true },
-  ];
+  // 🔔 load notifications
+  useEffect(() => {
+    if (!user || !token) return;
+
+    const userId =
+      user.id ?? user.userId ?? user.user_id ?? user.userid ?? user.uid;
+
+    if (!userId) {
+      console.warn("No userId found on user object for notifications.");
+      return;
+    }
+
+    async function load() {
+      try {
+        const data = await getNotifications(token, userId);
+        setNotifications(data);
+      } catch (err) {
+        console.error("Failed to load notifications", err);
+      }
+    }
+
+    load();
+  }, [user, token]);
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const handleLogout = () => {
-    logout(); // ✅ Clears user and localStorage
-    navigate("/student-login", { replace: true }); // ✅ Go to login cleanly
+    logout();
+    navigate("/student-login", { replace: true });
+  };
+
+  const markRead = async (id) => {
+    try {
+      const updated = await markNotificationRead(token, id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? updated : n))
+      );
+    } catch (err) {
+      console.error("Failed to mark notification as read", err);
+    }
+  };
+
+  const removeNotification = async (id) => {
+    try {
+      await deleteNotification(token, id);
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+    } catch (err) {
+      console.error("Failed to delete notification", err);
+    }
   };
 
   return (
@@ -52,7 +100,7 @@ const Header = ({ studentName }) => {
             onClick={() => navigate("/student")}
           />
 
-          {/* ✅ Navigation Links */}
+          {/* Navigation Links */}
           <nav style={{ display: "flex", alignItems: "center", gap: "28px" }}>
             <NavLink
               to="/student"
@@ -92,7 +140,9 @@ const Header = ({ studentName }) => {
               onClick={() => setShowNotifications(!showNotifications)}
             >
               <span style={{ fontSize: "22px" }}>🔔</span>
-              <span className="notification-badge">3</span>
+              {unreadCount > 0 && (
+                <span className="notification-badge">{unreadCount}</span>
+              )}
             </div>
 
             {showNotifications && (
@@ -121,57 +171,68 @@ const Header = ({ studentName }) => {
                   Notifications
                 </div>
                 <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+                  {notifications.length === 0 && (
+                    <p
+                      style={{
+                        padding: "20px",
+                        textAlign: "center",
+                        color: "#777",
+                      }}
+                    >
+                      No notifications
+                    </p>
+                  )}
+
                   {notifications.map((notif) => (
                     <div
                       key={notif.id}
                       style={{
                         padding: "16px 20px",
                         borderBottom: "1px solid #f0f0f0",
-                        cursor: "pointer",
-                        backgroundColor: notif.unread ? "#fff5f5" : "white",
-                        transition: "background 0.2s",
+                        backgroundColor: notif.isRead ? "white" : "#fff5f5",
                       }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor = "#f8f8f8")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor = notif.unread
-                          ? "#fff5f5"
-                          : "white")
-                      }
                     >
                       <p
                         style={{
                           margin: "0 0 6px 0",
                           color: "#333",
                           fontSize: "14px",
-                          fontWeight: notif.unread ? 600 : 400,
+                          fontWeight: notif.isRead ? 400 : 600,
                         }}
                       >
                         {notif.message}
                       </p>
-                      <small style={{ color: "#999", fontSize: "12px" }}>
-                        {notif.time}
-                      </small>
+
+                      <div style={{ display: "flex", gap: "10px" }}>
+                        {!notif.isRead && (
+                          <button
+                            style={{
+                              background: "none",
+                              color: "#8B2635",
+                              border: "none",
+                              cursor: "pointer",
+                              fontSize: "12px",
+                            }}
+                            onClick={() => markRead(notif.id)}
+                          >
+                            Mark Read
+                          </button>
+                        )}
+                        <button
+                          style={{
+                            background: "none",
+                            color: "red",
+                            border: "none",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                          }}
+                          onClick={() => removeNotification(notif.id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   ))}
-                </div>
-                <div
-                  style={{
-                    padding: "12px 20px",
-                    textAlign: "center",
-                    borderTop: "1px solid #e5e5e5",
-                    cursor: "pointer",
-                    color: "#8B2635",
-                    fontWeight: 600,
-                    fontSize: "14px",
-                  }}
-                  onClick={() => {
-                    alert("Mark all as read");
-                    setShowNotifications(false);
-                  }}
-                >
-                  Mark all as read
                 </div>
               </div>
             )}
@@ -183,14 +244,14 @@ const Header = ({ studentName }) => {
             {studentName}
           </span>
 
-          {/* ✅ Logout Button */}
+          {/* Logout */}
           <button className="logout-btn" onClick={handleLogout}>
             Logout
           </button>
         </div>
       </header>
 
-      {/* Overlay for Notifications */}
+      {/* Overlay to close notifications */}
       {showNotifications && (
         <div
           style={{

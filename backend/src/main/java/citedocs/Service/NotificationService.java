@@ -19,33 +19,56 @@ public class NotificationService {
         this.notificationRepository = notificationRepository;
     }
 
-    public NotificationEntity create(NotificationEntity notification) {
-        return notificationRepository.save(notification);
+    // CREATE
+    public NotificationEntity create(NotificationEntity payload) {
+        payload.setId(null);
+        payload.setIsRead(false);
+        return notificationRepository.save(payload);
     }
 
-    @Transactional(readOnly = true)
+    // LIST all
     public List<NotificationEntity> findAll() {
         return notificationRepository.findAll();
     }
 
-    @Transactional(readOnly = true)
-    public NotificationEntity findById(int id) {
-        return notificationRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Notification", "id", id));
+    // ⭐ FIX: This method MUST EXIST
+    public List<NotificationEntity> findByUserId(Integer userId) {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
+    // GET single
+    public NotificationEntity findById(int id) {
+        return notificationRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Notification", "id", id));
+    }
+
+    // MARK AS READ
+    public NotificationEntity markAsRead(int id) {
+        NotificationEntity notif = findById(id);
+        notif.setIsRead(true);
+        return notificationRepository.save(notif);
+    }
+
+    // UPDATE
     public NotificationEntity update(int id, NotificationEntity payload) {
         NotificationEntity existing = findById(id);
-        existing.setUserId(payload.getUserId());
-        existing.setRequestId(payload.getRequestId());
         existing.setMessage(payload.getMessage());
         existing.setIsRead(payload.getIsRead());
+        existing.setRequestId(payload.getRequestId());
+        existing.setUserId(payload.getUserId());
         return notificationRepository.save(existing);
     }
 
+    // DELETE one
     public void delete(int id) {
-        NotificationEntity existing = findById(id);
-        notificationRepository.delete(existing);
+        NotificationEntity notif = findById(id);
+        notificationRepository.delete(notif);
+    }
+
+    // DELETE all for user
+    public void deleteAllForUser(Integer userId) {
+        List<NotificationEntity> list = findByUserId(userId);
+        notificationRepository.deleteAll(list);
     }
 }
-
