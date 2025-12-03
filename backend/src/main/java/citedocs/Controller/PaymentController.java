@@ -1,7 +1,9 @@
 package citedocs.Controller;
 
 import java.io.IOException;
-import java.util.Base64;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -40,23 +42,53 @@ public class PaymentController {
 
     @PostMapping("/upload")
     public PaymentEntity uploadPayment(
-            @RequestParam("requestId") Long requestId,
-            @RequestParam("proofFile") MultipartFile proofFile,
-            @RequestParam(value = "remarks", required = false) String remarks) {
-        try {
-            // Convert file to base64 string for storage
-            String base64Proof = Base64.getEncoder().encodeToString(proofFile.getBytes());
-            
-            PaymentEntity payment = new PaymentEntity();
-            payment.setRequestId(requestId);
-            payment.setProofOfPayment(base64Proof);
-            payment.setRemarks(remarks);
-            
-            return paymentService.create(payment);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to process payment file", e);
+        @RequestParam("requestId") Long requestId,
+        @RequestParam("proofFile") MultipartFile proofFile,
+        @RequestParam(value = "remarks", required = false) String remarks) {
+    try {
+        // Create uploads directory if not exists
+        String uploadDir = "uploads/payments/";
+        java.nio.file.Path uploadPath = java.nio.file.Paths.get(uploadDir);
+        if (!java.nio.file.Files.exists(uploadPath)) {
+            java.nio.file.Files.createDirectories(uploadPath);
         }
+
+        // Generate stored filename
+        String originalName = proofFile.getOriginalFilename();
+        String storedName = System.currentTimeMillis() + "_" + originalName;
+        java.nio.file.Path filePath = uploadPath.resolve(storedName);
+
+        // Save file to disk
+        java.nio.file.Files.copy(proofFile.getInputStream(), filePath);
+
+        // Save ONLY filename to DB
+        PaymentEntity payment = new PaymentEntity();
+        payment.setRequestId(requestId);
+        payment.setProofOfPayment(storedName);
+        payment.setRemarks(remarks);
+
+        return paymentService.create(payment);
+
+    } catch (IOException e) {
+        throw new RuntimeException("File upload failed", e);
     }
+}
+
+    @GetMapping("/file/{filename}")
+    public ResponseEntity<?> getFile(@PathVariable String filename) {
+    try {
+        Path filePath = Paths.get("uploads/payments/").resolve(filename);
+        byte[] fileBytes = Files.readAllBytes(filePath);
+
+        return ResponseEntity.ok()
+                .header("Content-Type", "image/jpeg")
+                .body(fileBytes);
+
+    } catch (IOException e) {
+        return ResponseEntity.notFound().build();
+    }
+}
+
 
     @GetMapping
     public List<PaymentEntity> findAll() {

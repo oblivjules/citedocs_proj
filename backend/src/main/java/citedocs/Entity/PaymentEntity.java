@@ -22,8 +22,9 @@ public class PaymentEntity {
     @Column(name = "request_id", nullable = false)
     private Long requestId;
 
-    @Column(name = "proof_of_payment", nullable = false, columnDefinition = "TEXT")
-    private String proofOfPayment;
+    @Column(name = "proof_of_payment", nullable = false, length = 255)
+        private String proofOfPayment;
+
 
     @Column(name = "remarks", columnDefinition = "TEXT")
     private String remarks;

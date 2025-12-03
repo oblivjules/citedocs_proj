@@ -184,13 +184,10 @@ export default function DocumentRequest() {
                 token,
               });
               if (payment && payment.proofOfPayment) {
-                // Convert base64 to data URL for display
-                // Try to detect image type from base64 or default to jpeg
-                const imageType = payment.proofOfPayment.startsWith('/9j/') ? 'jpeg' :
-                                 payment.proofOfPayment.startsWith('iVBORw0KGgo') ? 'png' :
-                                 payment.proofOfPayment.startsWith('UklGR') ? 'webp' : 'jpeg';
-                proofUrl = `data:image/${imageType};base64,${payment.proofOfPayment}`;
-              }
+                    const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
+                    proofUrl = `${API_BASE_URL}/api/payments/file/${payment.proofOfPayment}`;
+                  }
+
             } catch (error) {
               // Payment not found is expected for requests without payment - ignore silently
               if (error.message && !error.message.includes('404')) {
