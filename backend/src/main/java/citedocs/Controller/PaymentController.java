@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -48,19 +49,25 @@ public class PaymentController {
     try {
         // Create uploads directory if not exists
         String uploadDir = "uploads/payments/";
-        java.nio.file.Path uploadPath = java.nio.file.Paths.get(uploadDir);
-        if (!java.nio.file.Files.exists(uploadPath)) {
-            java.nio.file.Files.createDirectories(uploadPath);
+        Path uploadPath = Paths.get(uploadDir);
+
+        try {
+            Files.createDirectories(uploadPath);  // safe even if folder already exists
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to initialize payment upload directory", e);
         }
+
 
         // Generate stored filename
         String originalName = proofFile.getOriginalFilename();
         String storedName = System.currentTimeMillis() + "_" + originalName;
-        java.nio.file.Path filePath = uploadPath.resolve(storedName);
 
         // Save file to disk
-        java.nio.file.Files.copy(proofFile.getInputStream(), filePath);
-
+        Files.copy(
+                proofFile.getInputStream(),
+                uploadPath.resolve(storedName),
+                StandardCopyOption.REPLACE_EXISTING
+            );
         // Save ONLY filename to DB
         PaymentEntity payment = new PaymentEntity();
         payment.setRequestId(requestId);
