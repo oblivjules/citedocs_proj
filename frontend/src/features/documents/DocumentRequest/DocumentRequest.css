@@ -1,0 +1,235 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+
+.request-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 32px;
+  padding: 40px 24px;
+  background-color: var(--light-bg);
+}
+
+.form-card, .history-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  padding: 28px;
+  flex: 1;
+}
+
+.form-card {
+  flex: 0.65;
+  border-top: 4px solid var(--secondary-color);
+}
+
+.history-card {
+  flex: 0.35;
+  border-top: 4px solid var(--primary-color);
+}
+
+.form-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.form-icon {
+  font-size: 28px;
+  background: var(--primary-color);
+  color: white;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.form-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.form-header p {
+  font-size: 14px;
+  color: var(--gray-medium);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  font-weight: 600;
+  color: var(--dark-color);
+  margin-bottom: 8px;
+}
+
+input, select {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 2px solid var(--gray-light);
+  font-family: "Montserrat", sans-serif;
+  transition: border-color 0.2s ease;
+}
+
+input:focus, select:focus {
+  border-color: var(--primary-color);
+  outline: none;
+}
+
+/* File Upload */
+.file-upload {
+  grid-column: 1 / -1;
+  border: 2px dashed var(--secondary-color);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  background: rgba(255, 248, 204, 0.3);
+  transition: all 0.2s ease;
+}
+
+.file-upload:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(248, 196, 0, 0.3);
+}
+
+.upload-icon {
+  font-size: 28px;
+  margin-bottom: 12px;
+}
+
+.upload-title {
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.file-label {
+  display: inline-block;
+  background: var(--primary-color);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  margin-top: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.file-label:hover {
+  background: #6d1d23;
+  transform: translateY(-2px);
+}
+
+.upload-info {
+  font-size: 12px;
+  color: var(--gray-medium);
+  margin-top: 8px;
+}
+
+.submit-btn {
+  grid-column: 1 / -1;
+  text-align: right;
+}
+
+/* History Table */
+.history-header h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 12px;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.history-table th, .history-table td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--gray-light);
+  font-size: 14px;
+}
+
+.badge-pending {
+  background: var(--secondary-color);
+  color: var(--dark-color);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 968px) {
+  .request-container {
+    flex-direction: column;
+  }
+
+  .form-card, .history-card {
+    width: 100%;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================
+   VIEW PROOF BUTTON (Improved)
+============================ */
+
+.view-proof-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #8B2635; /* maroon */
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: "Montserrat", sans-serif;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  white-space: nowrap;
+}
+
+.view-proof-btn:hover {
+  background-color: #FDB714; /* gold hover */
+  color: #8B2635; /* maroon text */
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(253, 183, 20, 0.35);
+}
+
+.view-proof-btn:active {
+  transform: scale(0.97);
+}
+
+/* Icon adjustment (optional) */
+.view-proof-btn::before {
+  font-size: 14px;
+}
+
+/* Fix Claim Slip button width */
+.claim-slip-btn {
+  min-width: 95px;        /* set a clean fixed width */
+  text-align: center;
+  padding: 8px 12px !important;
+  font-size: 13px;
+  border-radius: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+
+
