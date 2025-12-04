@@ -57,5 +57,10 @@ public class RequestsController {
     public void delete(@PathVariable Long id) {
         requestsService.delete(id);
     }
+
+    @PutMapping("/{id}/status")
+    public RequestsEntity updateStatus(@PathVariable Long id, @RequestBody StatusUpdateRequest payload) {
+        return requestsService.updateStatus(id, payload);
+    }
 }
 

@@ -483,6 +483,11 @@
   background: #4CAF50;
 }
 
+.status-rejected { 
+  background: #DC143C;
+  color: white;
+}
+
 .action-cell {
   display: flex;
   gap: 8px; /* Modern approach instead of manual margins */

@@ -28,6 +28,9 @@ public class RequestStatusLogEntity {
     @Column(name = "new_status", nullable = false)
     private String newStatus;
 
+    @Column(name = "remarks")
+    private String remarks;
+
     @Column(name = "changed_by", nullable = false)
     private int changedBy;
 
@@ -69,6 +72,14 @@ public class RequestStatusLogEntity {
 
     public void setNewStatus(String newStatus) {
         this.newStatus = newStatus;
+    }
+
+    public String getRemarks() {
+        return remarks;
+    }
+
+    public void setRemarks(String remarks) {
+        this.remarks = remarks;
     }
 
     public int getChangedBy() {
