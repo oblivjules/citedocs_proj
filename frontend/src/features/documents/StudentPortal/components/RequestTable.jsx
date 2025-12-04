@@ -8,6 +8,7 @@ const RequestTable = ({ requests, onViewDetails }) => {
       Approved: "status-ready",
       Pending: "status-pending-payment",
       Completed: "status-completed",
+      Rejected: "status-rejected",
     };
     return statusMap[status] || "status-default";
   };

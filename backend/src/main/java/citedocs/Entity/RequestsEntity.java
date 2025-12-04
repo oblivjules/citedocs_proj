@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonCreator;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -29,7 +30,17 @@ public class RequestsEntity {
         PROCESSING,
         COMPLETED,
         APPROVED,
-        REJECTED
+        REJECTED;
+
+        @JsonCreator
+        public static Status fromString(String key) {
+            if (key == null) return null;
+            try {
+                return Status.valueOf(key.toUpperCase());
+            } catch (IllegalArgumentException ex) {
+                return null;
+            }
+        }
     }
 
     @Id
@@ -46,7 +57,7 @@ public class RequestsEntity {
     private DocumentsEntity document;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false, columnDefinition = "varchar(32)")
     private Status status = Status.PENDING;
 
     @Column(nullable = false)
@@ -63,6 +74,19 @@ public class RequestsEntity {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    // Transient fields for enriched responses (populated by service)
+    @jakarta.persistence.Transient
+    private String userName;  // Student name from UserEntity
+
+    @jakarta.persistence.Transient
+    private String studentId;  // Student ID from UserEntity
+
+    @jakarta.persistence.Transient
+    private String proofOfPayment;  // Proof image URL/path from PaymentEntity
+
+    @jakarta.persistence.Transient
+    private String documentName;  // Document name from DocumentsEntity
 
     @PrePersist
     protected void onCreate() {
@@ -142,5 +166,37 @@ public class RequestsEntity {
 
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public String getStudentId() {
+        return studentId;
+    }
+
+    public void setStudentId(String studentId) {
+        this.studentId = studentId;
+    }
+
+    public String getProofOfPayment() {
+        return proofOfPayment;
+    }
+
+    public void setProofOfPayment(String proofOfPayment) {
+        this.proofOfPayment = proofOfPayment;
+    }
+
+    public String getDocumentName() {
+        return documentName;
+    }
+
+    public void setDocumentName(String documentName) {
+        this.documentName = documentName;
     }
 }

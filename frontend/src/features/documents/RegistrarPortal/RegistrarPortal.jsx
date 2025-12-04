@@ -108,18 +108,20 @@ export default function RegistrarPortal() {
         if (Array.isArray(data)) {
           setRequests(
             data.map((req) => ({
-              id: req.referenceCode || req.id,
-              studentName: req.student?.name || req.studentName,
-              studentId: req.student?.studentId || req.studentId,
-              documentType:
-                req.documentType?.name || req.documentType || "Document",
+              id: req.referenceCode || `REQ-${req.requestId}`,
+              requestId: req.requestId || req.id,
+              referenceCode: req.referenceCode || `REQ-${req.requestId}`,
+              studentName: req.userName || "Unknown Student",
+              studentId: req.studentId || "N/A",
+              documentType: req.documentName || req.documentType?.name || req.documentType || "Document",
               purpose: req.purpose,
               copies: req.copies,
               status: (req.status || "").toLowerCase(),
               date: req.createdAt
                 ? new Date(req.createdAt).toLocaleDateString()
                 : "",
-              proofImage: req.paymentProofUrl || req.proofImage,
+              dateReady: req.dateReady,
+              proofImage: req.proofOfPayment,
             }))
           );
         }
@@ -138,14 +140,14 @@ export default function RegistrarPortal() {
   const handleStatusChange = async (id, newStatus, remarks) => {
     setRequests((prev) =>
       prev.map((req) =>
-        req.id === id ? { ...req, status: newStatus, remarks } : req
+          req.requestId === id || req.id === id ? { ...req, status: newStatus, remarks } : req
       )
     );
 
     if (!token) return;
     try {
       await updateRequestStatus({
-        id,
+          id: id,
         status: newStatus,
         remarks,
         token,

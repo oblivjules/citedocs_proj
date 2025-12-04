@@ -90,24 +90,32 @@ const StudentPortal = () => {
         
         if (Array.isArray(data)) {
           setRequests(
-            data.map((req) => ({
-              id: req.requestId?.toString() || req.id?.toString() || "",
-              type: req.document?.name || req.documentType?.name || "Document",
-              date: req.createdAt
-                ? new Date(req.createdAt).toLocaleDateString()
-                : "",
-              status: req.status || "PENDING",
-              copies: req.copies || 1,
-              dateNeeded: req.dateNeeded
-                ? new Date(req.dateNeeded).toLocaleDateString()
-                : "",
-              created: req.createdAt
-                ? new Date(req.createdAt).toLocaleDateString()
-                : "",
-              lastUpdated: req.updatedAt
-                ? new Date(req.updatedAt).toLocaleDateString()
-                : "",
-            }))
+            data.map((req) => {
+              const rawStatus = req.status || "PENDING";
+              const formattedStatus = rawStatus
+                .toString()
+                .toLowerCase()
+                .replace(/(^|_)([a-z])/g, (m, p1, p2) => p2.toUpperCase());
+
+              return {
+                id: req.requestId?.toString() || req.id?.toString() || "",
+                type: req.document?.name || req.documentType?.name || "Document",
+                date: req.createdAt
+                  ? new Date(req.createdAt).toLocaleDateString()
+                  : "",
+                status: formattedStatus,
+                copies: req.copies || 1,
+                dateNeeded: req.dateNeeded
+                  ? new Date(req.dateNeeded).toLocaleDateString()
+                  : "",
+                created: req.createdAt
+                  ? new Date(req.createdAt).toLocaleDateString()
+                  : "",
+                lastUpdated: req.updatedAt
+                  ? new Date(req.updatedAt).toLocaleDateString()
+                  : "",
+              };
+            })
           );
         } else {
           setRequests([]);
@@ -144,11 +152,10 @@ const StudentPortal = () => {
       title: "Ready for Pickup",
       subtitle: "Approved documents",
       value: requests
-        .filter((item) =>
-          ["Approved", "Completed", "APPROVED", "COMPLETED", "READY_FOR_PICKUP"].includes(
-            item.status || ""
-          )
-        )
+        .filter((item) => {
+          const s = (item.status || "").toString().toLowerCase();
+          return s === "approved" || s === "completed" || s === "ready_for_pickup" || s === "ready for pickup";
+        })
         .length.toString(),
       icon: "✓",
       variant: "white",

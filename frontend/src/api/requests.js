@@ -34,8 +34,8 @@ export const updateRequest = ({ id, payload, token }) =>
 
 export const updateRequestStatus = ({ id, status, remarks, token }) =>
   apiRequest(`${REQUESTS_BASE}/${id}/status`, {
-    method: "PATCH",
-    body: { status, remarks },
+    method: "PUT",
+    body: { status: status ? status.toUpperCase() : status, remarks, dateReady: new Date().toISOString() },
     token,
   });
 

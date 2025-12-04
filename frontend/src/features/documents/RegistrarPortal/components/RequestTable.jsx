@@ -43,7 +43,8 @@ export default function RequestTable({ requests, onView }) {
               <th>Student Info</th>
               <th>Document Type</th>
               <th>Copies</th>
-              <th>Date</th>
+              <th>Date Requested</th>
+              <th>Date Ready</th>
               <th>Proof Image</th>
               <th>Status</th>
               <th>Actions</th>
@@ -58,8 +59,8 @@ export default function RequestTable({ requests, onView }) {
                   status === "completed" || status === "rejected";
 
                 return (
-                  <tr key={req.id}>
-                    <td>{req.id}</td>
+                  <tr key={req.requestId || req.id}>
+                      <td>{req.referenceCode || req.requestId || req.id}</td>
 
                     <td>
                       <strong>{req.studentName}</strong>
@@ -72,6 +73,14 @@ export default function RequestTable({ requests, onView }) {
                     <td>{req.documentType}</td>
                     <td>{req.copies}</td>
                     <td>{req.date}</td>
+
+                    <td>
+                      {req.dateReady ? (
+                        new Date(req.dateReady).toLocaleDateString()
+                      ) : (
+                        <em style={{ color: "#888" }}>—</em>
+                      )}
+                    </td>
 
                     {/* Proof button now opens shared modal */}
                     <td>
@@ -119,7 +128,7 @@ export default function RequestTable({ requests, onView }) {
               })
             ) : (
               <tr>
-                <td colSpan="8" style={{ textAlign: "center", padding: "1rem" }}>
+                <td colSpan="9" style={{ textAlign: "center", padding: "1rem" }}>
                   No requests found.
                 </td>
               </tr>
