@@ -19,6 +19,30 @@ export default function Header({ studentName }) {
   const navigate = useNavigate();
   const { user, token, logout } = useAuthContext();
 
+  /** --------------------------------------------------
+   * Get Initials (Correct: first + last initial)
+   * Example: Juan Dela Cruz -> JC
+   -----------------------------------------------------*/
+  const getInitials = (fullName) => {
+    if (!fullName) return "U";
+
+    const parts = fullName.trim().split(" ").filter(Boolean);
+
+    if (parts.length === 1) {
+      return parts[0].substring(0, 2).toUpperCase();
+    }
+
+    const firstInitial = parts[0][0];
+    const lastInitial = parts[parts.length - 1][0];
+
+    return (firstInitial + lastInitial).toUpperCase();
+  };
+
+  const initials = getInitials(user?.name || studentName);
+
+  /** --------------------------------------------------
+   * Load Notifications
+   -----------------------------------------------------*/
   useEffect(() => {
     if (!token || !user?.userId) return;
     loadNotifications();
@@ -32,6 +56,9 @@ export default function Header({ studentName }) {
     setUnread(unreadList);
   };
 
+  /** --------------------------------------------------
+   * Mark a notification as read
+   -----------------------------------------------------*/
   const handleMarkRead = async (id) => {
     await markNotificationRead(token, id);
 
@@ -44,6 +71,9 @@ export default function Header({ studentName }) {
     );
   };
 
+  /** --------------------------------------------------
+   * Choose appropriate icon based on message
+   -----------------------------------------------------*/
   const getIcon = (msg) => {
     msg = msg.toLowerCase();
     if (msg.includes("approved")) return "✅";
@@ -53,6 +83,9 @@ export default function Header({ studentName }) {
     return "🔔";
   };
 
+  /** --------------------------------------------------
+   * RENDER UI
+   -----------------------------------------------------*/
   return (
     <>
       <header
@@ -65,8 +98,7 @@ export default function Header({ studentName }) {
           alignItems: "center",
         }}
       >
-        
-        {/* LEFT */}
+        {/* LEFT SECTION */}
         <div style={{ display: "flex", alignItems: "center", gap: "40px" }}>
           <img
             src={appLogo}
@@ -82,20 +114,25 @@ export default function Header({ studentName }) {
           </nav>
         </div>
 
-        {/* RIGHT */}
+        {/* RIGHT SECTION */}
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           
           {/* NOTIFICATION BELL */}
           <div style={{ position: "relative" }}>
-            <div className="notification-bell" onClick={() => setShowNotifications(!showNotifications)}>
+            <div 
+              className="notification-bell"
+              onClick={() => setShowNotifications(!showNotifications)}
+            >
               🔔
               {unread.length > 0 && (
                 <span className="notification-badge">{unread.length}</span>
               )}
             </div>
 
+            {/* DROPDOWN */}
             {showNotifications && (
               <div className="notification-dropdown">
+
                 <div className="notification-header">Notifications</div>
 
                 <div className="notification-list">
@@ -137,18 +174,23 @@ export default function Header({ studentName }) {
             )}
           </div>
 
-          <div className="user-avatar">
-            {studentName?.substring(0, 2).toUpperCase()}
-          </div>
+          {/* USER AVATAR W/ INITIALS */}
+          <div className="user-avatar">{initials}</div>
 
-          <span>{studentName}</span>
+          {/* USER NAME */}
+          <span style={{ fontWeight: "600", fontSize: "15px" }}>
+            {user?.name || studentName}
+          </span>
 
+          {/* LOGOUT */}
           <button className="logout-btn" onClick={logout}>
             Logout
           </button>
+
         </div>
       </header>
 
+      {/* CLOSE DROPDOWN WHEN CLICK OUTSIDE */}
       {showNotifications && (
         <div
           onClick={() => setShowNotifications(false)}
