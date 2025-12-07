@@ -1,34 +1,56 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuthContext } from "../../../auth/context/AuthContext";
 import appLogo from "../../../../assets/images/app_logo.png";
 
-const Header = ({ studentName }) => {
-  const [showNotifications, setShowNotifications] = useState(false);
-  const navigate = useNavigate();
-  const { logout, user } = useAuthContext(); // ✅ Access logout function from context
+import {
+  getNotifications,
+  getUnreadNotifications,
+  markNotificationRead
+} from "../../../../api/notifications";
 
-  // Get user initials from name
-  const getUserInitials = (name) => {
-    if (!name) return "U";
-    const parts = name.trim().split(" ");
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
+import "../../../../components/NotificationStyles.css";
+
+export default function Header({ studentName }) {
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unread, setUnread] = useState([]);
+
+  const navigate = useNavigate();
+  const { user, token, logout } = useAuthContext();
+
+  useEffect(() => {
+    if (!token || !user?.userId) return;
+    loadNotifications();
+  }, [token, user]);
+
+  const loadNotifications = async () => {
+    const all = await getNotifications(token, user.userId);
+    const unreadList = await getUnreadNotifications(token, user.userId);
+
+    setNotifications(all);
+    setUnread(unreadList);
   };
 
-  const userInitials = getUserInitials(user?.name || studentName);
+  const handleMarkRead = async (id) => {
+    await markNotificationRead(token, id);
 
-  const notifications = [
-    { id: 1, message: "REQ-2025-001 is now processing", time: "2 hours ago", unread: true },
-    { id: 2, message: "Payment confirmed for REQ-2025-002", time: "1 day ago", unread: true },
-    { id: 3, message: "Document REQ-2025-003 ready for pickup", time: "2 days ago", unread: true },
-  ];
+    setUnread(unread.filter((n) => n.notificationId !== id));
 
-  const handleLogout = () => {
-    logout(); // ✅ Clears user and localStorage
-    navigate("/student-login", { replace: true }); // ✅ Go to login cleanly
+    setNotifications(
+      notifications.map((n) =>
+        n.notificationId === id ? { ...n, isRead: true } : n
+      )
+    );
+  };
+
+  const getIcon = (msg) => {
+    msg = msg.toLowerCase();
+    if (msg.includes("approved")) return "✅";
+    if (msg.includes("completed")) return "📦";
+    if (msg.includes("processing")) return "⚙️";
+    if (msg.includes("rejected")) return "❌";
+    return "🔔";
   };
 
   return (
@@ -43,131 +65,69 @@ const Header = ({ studentName }) => {
           alignItems: "center",
         }}
       >
-        {/* Left Section */}
+        
+        {/* LEFT */}
         <div style={{ display: "flex", alignItems: "center", gap: "40px" }}>
           <img
             src={appLogo}
-            alt="CITeDocs Logo"
+            alt="Logo"
             style={{ height: "48px", cursor: "pointer" }}
             onClick={() => navigate("/student")}
           />
 
-          {/* ✅ Navigation Links */}
-          <nav style={{ display: "flex", alignItems: "center", gap: "28px" }}>
-            <NavLink
-              to="/student"
-              className={({ isActive }) =>
-                isActive ? "nav-link active-link" : "nav-link"
-              }
-            >
-              Dashboard
-            </NavLink>
-
-            <NavLink
-              to="/student/request-form"
-              className={({ isActive }) =>
-                isActive ? "nav-link active-link" : "nav-link"
-              }
-            >
-              Create Request
-            </NavLink>
-
-            <NavLink
-              to="/student/requests"
-              className={({ isActive }) =>
-                isActive ? "nav-link active-link" : "nav-link"
-              }
-            >
-              All Requests
-            </NavLink>
+          <nav style={{ display: "flex", gap: "28px" }}>
+            <NavLink to="/student" className="nav-link">Dashboard</NavLink>
+            <NavLink to="/student/request-form" className="nav-link">Create Request</NavLink>
+            <NavLink to="/student/requests" className="nav-link">All Requests</NavLink>
           </nav>
         </div>
 
-        {/* Right Section */}
+        {/* RIGHT */}
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          {/* Notifications */}
+          
+          {/* NOTIFICATION BELL */}
           <div style={{ position: "relative" }}>
-            <div
-              style={{ cursor: "pointer" }}
-              onClick={() => setShowNotifications(!showNotifications)}
-            >
-              <span style={{ fontSize: "22px" }}>🔔</span>
-              <span className="notification-badge">3</span>
+            <div className="notification-bell" onClick={() => setShowNotifications(!showNotifications)}>
+              🔔
+              {unread.length > 0 && (
+                <span className="notification-badge">{unread.length}</span>
+              )}
             </div>
 
             {showNotifications && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "45px",
-                  right: 0,
-                  backgroundColor: "white",
-                  borderRadius: "12px",
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-                  width: "320px",
-                  zIndex: 1000,
-                  overflow: "auto",
-                }}
-              >
-                <div
-                  style={{
-                    padding: "16px 20px",
-                    borderBottom: "1px solid #e5e5e5",
-                    fontWeight: 700,
-                    color: "#333",
-                    fontSize: "16px",
-                  }}
-                >
-                  Notifications
-                </div>
-                <div style={{ maxHeight: "400px", overflowY: "auto" }}>
-                  {notifications.map((notif) => (
-                    <div
-                      key={notif.id}
-                      style={{
-                        padding: "16px 20px",
-                        borderBottom: "1px solid #f0f0f0",
-                        cursor: "pointer",
-                        backgroundColor: notif.unread ? "#fff5f5" : "white",
-                        transition: "background 0.2s",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor = "#f8f8f8")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor = notif.unread
-                          ? "#fff5f5"
-                          : "white")
-                      }
-                    >
-                      <p
-                        style={{
-                          margin: "0 0 6px 0",
-                          color: "#333",
-                          fontSize: "14px",
-                          fontWeight: notif.unread ? 600 : 400,
-                        }}
+              <div className="notification-dropdown">
+                <div className="notification-header">Notifications</div>
+
+                <div className="notification-list">
+                  {notifications.map((notif) => {
+                    const isRead = notif.isRead;
+
+                    return (
+                      <div
+                        key={notif.notificationId}
+                        className={`notification-item ${isRead ? "read" : "unread"}`}
+                        onClick={() => handleMarkRead(notif.notificationId)}
                       >
-                        {notif.message}
-                      </p>
-                      <small style={{ color: "#999", fontSize: "12px" }}>
-                        {notif.time}
-                      </small>
-                    </div>
-                  ))}
+                        <div className="notification-icon">{getIcon(notif.message)}</div>
+
+                        <div>
+                          <p className={`notification-message ${isRead ? "" : "unread"}`}>
+                            {notif.message}
+                          </p>
+
+                          <div className="notification-time">
+                            {new Date(notif.createdAt).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
+
                 <div
-                  style={{
-                    padding: "12px 20px",
-                    textAlign: "center",
-                    borderTop: "1px solid #e5e5e5",
-                    cursor: "pointer",
-                    color: "#8B2635",
-                    fontWeight: 600,
-                    fontSize: "14px",
-                  }}
+                  className="notification-footer"
                   onClick={() => {
-                    alert("Mark all as read");
+                    unread.forEach((n) => handleMarkRead(n.notificationId));
                     setShowNotifications(false);
                   }}
                 >
@@ -177,35 +137,24 @@ const Header = ({ studentName }) => {
             )}
           </div>
 
-          {/* User Info */}
-          <div className="user-avatar">{userInitials}</div>
-          <span style={{ fontWeight: "600", fontSize: "15px" }}>
-            {studentName}
-          </span>
+          <div className="user-avatar">
+            {studentName?.substring(0, 2).toUpperCase()}
+          </div>
 
-          {/* ✅ Logout Button */}
-          <button className="logout-btn" onClick={handleLogout}>
+          <span>{studentName}</span>
+
+          <button className="logout-btn" onClick={logout}>
             Logout
           </button>
         </div>
       </header>
 
-      {/* Overlay for Notifications */}
       {showNotifications && (
         <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 999,
-          }}
           onClick={() => setShowNotifications(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 80 }}
         />
       )}
     </>
   );
-};
-
-export default Header;
+}

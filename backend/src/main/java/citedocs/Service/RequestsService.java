@@ -1,6 +1,7 @@
 package citedocs.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,8 @@ import citedocs.Repository.RequestsRepository;
 import citedocs.Repository.RequestStatusLogRepository;
 import citedocs.Repository.UserRepository;
 import citedocs.Repository.PaymentRepository;
+import citedocs.Entity.UserEntity;
+import citedocs.Service.NotificationService;
 
 @Service
 @Transactional
@@ -28,18 +31,61 @@ public class RequestsService {
     private final RequestStatusLogRepository requestStatusLogRepository;
     private final UserRepository userRepository;
     private final PaymentRepository paymentRepository;
+    private final NotificationService notificationService;
 
-    public RequestsService(RequestsRepository requestsRepository, DocumentsRepository documentsRepository, RequestStatusLogRepository requestStatusLogRepository, UserRepository userRepository, PaymentRepository paymentRepository) {
+    public RequestsService(RequestsRepository requestsRepository,
+                           DocumentsRepository documentsRepository,
+                           RequestStatusLogRepository requestStatusLogRepository,
+                           UserRepository userRepository,
+                           PaymentRepository paymentRepository,
+                           NotificationService notificationService) {
         this.requestsRepository = requestsRepository;
         this.documentsRepository = documentsRepository;
         this.requestStatusLogRepository = requestStatusLogRepository;
         this.userRepository = userRepository;
         this.paymentRepository = paymentRepository;
+        this.notificationService = notificationService;
     }
 
+    // CREATE REQUEST (Notify Registrar)
     public RequestsEntity create(RequestsEntity request) {
+
         request.setDocument(resolveDocument(request.getDocument()));
-        return requestsRepository.save(request);
+        RequestsEntity saved = requestsRepository.save(request);
+
+        // Fetch student info for message
+        String studentName = "A student";
+        String studentSid = null;
+
+        if (saved.getUserId() != null) {
+            Optional<UserEntity> maybeUser = userRepository.findById(saved.getUserId().intValue());
+            if (maybeUser.isPresent()) {
+                UserEntity user = maybeUser.get();
+                studentName = user.getName() != null ? user.getName() : studentName;
+                studentSid = user.getSid();
+            }
+        }
+
+        // Notify all registrars
+        List<UserEntity> registrars = userRepository.findByRole(UserEntity.Role.REGISTRAR);
+        String docName = saved.getDocument() != null ? saved.getDocument().getName() : "a document";
+
+        String message = String.format(
+                "New request submitted by %s%s for %s.",
+                studentName,
+                (studentSid != null ? " (SID: " + studentSid + ")" : ""),
+                docName
+        );
+
+        for (UserEntity reg : registrars) {
+            notificationService.sendNotification(
+                    reg.getUserId(),                  // ⭐ FIXED getUserId()
+                    saved.getRequestId(),
+                    message
+            );
+        }
+
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -67,12 +113,13 @@ public class RequestsService {
         existing.setStatus(payload.getStatus());
         existing.setCopies(payload.getCopies());
         existing.setDateNeeded(payload.getDateNeeded());
-        if (payload.getDateReady() != null) {
+
+        if (payload.getDateReady() != null)
             existing.setDateReady(payload.getDateReady());
-        }
-        if (payload.getDocument() != null) {
+
+        if (payload.getDocument() != null)
             existing.setDocument(resolveDocument(payload.getDocument()));
-        }
+
         return requestsRepository.save(existing);
     }
 
@@ -81,88 +128,93 @@ public class RequestsService {
         requestsRepository.delete(existing);
     }
 
+    // UPDATE STATUS (Notify Student)
     public RequestsEntity updateStatus(Long id, StatusUpdateRequest payload) {
+
         RequestsEntity existing = findById(id);
         RequestsEntity.Status oldStatus = existing.getStatus();
 
-        // Parse new status from string safely
         RequestsEntity.Status newStatus = RequestsEntity.Status.fromString(payload.getStatus());
-        if (newStatus == null) {
-            throw new IllegalArgumentException("Invalid status value: " + payload.getStatus());
-        }
+        if (newStatus == null)
+            throw new IllegalArgumentException("Invalid status: " + payload.getStatus());
 
-        // Update the request
         existing.setStatus(newStatus);
 
-        // Parse and set dateReady if provided (handles offset/Z and plain LocalDateTime)
         if (payload.getDateReady() != null && !payload.getDateReady().isEmpty()) {
             try {
-                LocalDateTime parsed = OffsetDateTime.parse(payload.getDateReady()).toLocalDateTime();
-                existing.setDateReady(parsed);
+                existing.setDateReady(OffsetDateTime.parse(payload.getDateReady()).toLocalDateTime());
             } catch (DateTimeParseException ex) {
-                // fallback to LocalDateTime parse
                 try {
-                    LocalDateTime parsed = LocalDateTime.parse(payload.getDateReady());
-                    existing.setDateReady(parsed);
-                } catch (DateTimeParseException ex2) {
-                    // ignore invalid date formats
-                }
+                    existing.setDateReady(LocalDateTime.parse(payload.getDateReady()));
+                } catch (DateTimeParseException ignored) {}
             }
         }
 
         RequestsEntity updated = requestsRepository.save(existing);
 
-        // Log the status change (include remarks if present)
+        // STATUS LOG
         RequestStatusLogEntity log = new RequestStatusLogEntity();
         log.setRequestId(id);
         log.setOldStatus(oldStatus != null ? oldStatus.toString() : null);
         log.setNewStatus(newStatus.toString());
-        log.setChangedBy(existing.getUserId() != null ? existing.getUserId().intValue() : 0); // or use authenticated user ID
+        log.setChangedBy(existing.getUserId() != null ? existing.getUserId().intValue() : 0);
         log.setRemarks(payload.getRemarks());
+
         requestStatusLogRepository.save(log);
+
+        // SEND NOTIFICATION TO STUDENT
+        if (existing.getUserId() != null) {
+            int studentUserId = existing.getUserId().intValue();
+            String docName = existing.getDocument() != null ? existing.getDocument().getName() : "your document";
+
+            String notifMessage = String.format(
+                    "Your request for %s is now: %s",
+                    docName,
+                    newStatus.toString()
+            );
+
+            notificationService.sendNotification(
+                    studentUserId,
+                    existing.getRequestId(),
+                    notifMessage
+            );
+        }
 
         return enrichRequest(updated);
     }
 
     private DocumentsEntity resolveDocument(DocumentsEntity documentPayload) {
-        if (documentPayload == null || documentPayload.getDocumentId() == null) {
+        if (documentPayload == null || documentPayload.getDocumentId() == null)
             throw new ResourceNotFoundException("Document", "id", "missing");
-        }
+
         Long documentId = documentPayload.getDocumentId();
+
         return documentsRepository.findById(documentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Document", "id",
-                        documentId));
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", documentId));
     }
 
-    // Helper method to enrich a single request with user and payment data
     private RequestsEntity enrichRequest(RequestsEntity request) {
         if (request != null) {
-            // Fetch and set user info (convert Long to Integer for repository lookup)
+
             if (request.getUserId() != null) {
                 userRepository.findById(request.getUserId().intValue()).ifPresent(user -> {
                     request.setUserName(user.getName());
-                    request.setStudentId(user.getSid());  // sid is the student ID field
+                    request.setStudentId(user.getSid());
                 });
             }
 
-            // Fetch and set payment proof
-            paymentRepository.findByRequestId(request.getRequestId()).ifPresent(payment -> {
-                request.setProofOfPayment(payment.getProofOfPayment());
-            });
+            paymentRepository.findByRequestId(request.getRequestId()).ifPresent(payment ->
+                    request.setProofOfPayment(payment.getProofOfPayment())
+            );
 
-            // Set document name
-            if (request.getDocument() != null && request.getDocument().getName() != null) {
+            if (request.getDocument() != null)
                 request.setDocumentName(request.getDocument().getName());
-            }
         }
+
         return request;
     }
 
-    // Helper method to enrich multiple requests
     private List<RequestsEntity> enrichRequests(List<RequestsEntity> requests) {
-        return requests.stream()
-                .map(this::enrichRequest)
-                .toList();
+        return requests.stream().map(this::enrichRequest).toList();
     }
 }
-

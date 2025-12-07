@@ -1,22 +1,65 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuthContext } from "../../../auth/context/AuthContext";
 import appLogo from "../../../../assets/images/app_logo.png";
 
+import {
+  getNotifications,
+  getUnreadNotifications,
+  markNotificationRead
+} from "../../../../api/notifications";
+
+import "../../../../components/NotificationStyles.css";
+
 export default function Header({ registrarName = "Registrar" }) {
   const [showNotifications, setShowNotifications] = useState(false);
-  const navigate = useNavigate();
-  const { logout } = useAuthContext();
+  const [notifications, setNotifications] = useState([]);
+  const [unread, setUnread] = useState([]);
 
-  const notifications = [
-    { id: 1, message: "REQ-2025-007 was successfully approved", time: "1 hour ago", unread: true },
-    { id: 2, message: "New document request submitted by Student A", time: "3 hours ago", unread: true },
-    { id: 3, message: "Payment confirmation for REQ-2025-006 received", time: "1 day ago", unread: false },
-  ];
+  const navigate = useNavigate();
+  const { logout, user, token } = useAuthContext();
+
+  useEffect(() => {
+    if (!token || !user?.userId) return;
+    loadNotifications();
+  }, [token, user]);
+
+  const loadNotifications = async () => {
+    try {
+      const all = await getNotifications(token, user.userId);
+      const unreadList = await getUnreadNotifications(token, user.userId);
+
+      setNotifications(all);
+      setUnread(unreadList);
+    } catch (err) {
+      console.error("Failed to load notifications", err);
+    }
+  };
+
+  const handleMarkRead = async (id) => {
+    await markNotificationRead(token, id);
+    setUnread(unread.filter((n) => n.notificationId !== id));
+    setNotifications(
+      notifications.map((n) =>
+        n.notificationId === id ? { ...n, isRead: true } : n
+      )
+    );
+  };
 
   const handleLogout = () => {
     logout();
     navigate("/registrar-login", { replace: true });
+  };
+
+  // Select icons based on message keywords
+  const getIcon = (msg) => {
+    msg = msg.toLowerCase();
+    if (msg.includes("submitted")) return "📝";
+    if (msg.includes("approved")) return "✅";
+    if (msg.includes("processing")) return "⚙️";
+    if (msg.includes("rejected")) return "❌";
+    if (msg.includes("payment")) return "💰";
+    return "🔔";
   };
 
   return (
@@ -29,13 +72,12 @@ export default function Header({ registrarName = "Registrar" }) {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          boxShadow: "0 2px 6px rgba(0, 0, 0, 0.1)",
           position: "sticky",
           top: 0,
           zIndex: 100,
         }}
       >
-        {/* Left Section */}
+        {/* LEFT */}
         <div style={{ display: "flex", alignItems: "center", gap: "40px" }}>
           <img
             src={appLogo}
@@ -44,115 +86,55 @@ export default function Header({ registrarName = "Registrar" }) {
             onClick={() => navigate("/registrar")}
           />
 
-          {/* Navigation Links */}
           <nav style={{ display: "flex", alignItems: "center", gap: "28px" }}>
-            <NavLink
-              to="/registrar"
-              className={({ isActive }) =>
-                isActive ? "nav-link active-link" : "nav-link"
-              }
-            >
-              Home
-            </NavLink>
-
-            <NavLink
-              to="/registrar/all-requests"
-              className={({ isActive }) =>
-                isActive ? "nav-link active-link" : "nav-link"
-              }
-            >
-              All Requests
-            </NavLink>
+            <NavLink to="/registrar" className="nav-link">Home</NavLink>
+            <NavLink to="/registrar/all-requests" className="nav-link">All Requests</NavLink>
           </nav>
         </div>
 
-        {/* Right Section */}
+        {/* RIGHT */}
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          {/* Notifications */}
+          
+          {/* NOTIFICATION BELL */}
           <div style={{ position: "relative" }}>
-            <div
-              style={{ cursor: "pointer" }}
-              onClick={() => setShowNotifications(!showNotifications)}
-            >
-              <span style={{ fontSize: "22px" }}>🔔</span>
-              <span className="notification-badge">
-                {notifications.filter((n) => n.unread).length}
-              </span>
+            <div className="notification-bell" onClick={() => setShowNotifications(!showNotifications)}>
+              🔔
+              {unread.length > 0 && <span className="notification-badge">{unread.length}</span>}
             </div>
 
             {showNotifications && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "45px",
-                  right: 0,
-                  backgroundColor: "white",
-                  borderRadius: "12px",
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-                  width: "320px",
-                  zIndex: 1000,
-                  overflow: "auto",
-                }}
-              >
-                <div
-                  style={{
-                    padding: "16px 20px",
-                    borderBottom: "1px solid #e5e5e5",
-                    fontWeight: 700,
-                    color: "#333",
-                    fontSize: "16px",
-                  }}
-                >
-                  Notifications
-                </div>
-                <div style={{ maxHeight: "400px", overflowY: "auto" }}>
-                  {notifications.map((notif) => (
-                    <div
-                      key={notif.id}
-                      style={{
-                        padding: "16px 20px",
-                        borderBottom: "1px solid #f0f0f0",
-                        cursor: "pointer",
-                        backgroundColor: notif.unread ? "#fff5f5" : "white",
-                        transition: "background 0.2s",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor = "#f8f8f8")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor = notif.unread
-                          ? "#fff5f5"
-                          : "white")
-                      }
-                    >
-                      <p
-                        style={{
-                          margin: "0 0 6px 0",
-                          color: "#333",
-                          fontSize: "14px",
-                          fontWeight: notif.unread ? 600 : 400,
-                        }}
+              <div className="notification-dropdown">
+                
+                <div className="notification-header">Notifications</div>
+
+                <div className="notification-list">
+                  {notifications.map((notif) => {
+                    const isRead = notif.isRead;
+                    return (
+                      <div
+                        key={notif.notificationId}
+                        className={`notification-item ${isRead ? "read" : "unread"}`}
+                        onClick={() => handleMarkRead(notif.notificationId)}
                       >
-                        {notif.message}
-                      </p>
-                      <small style={{ color: "#999", fontSize: "12px" }}>
-                        {notif.time}
-                      </small>
-                    </div>
-                  ))}
+                        <div className="notification-icon">{getIcon(notif.message)}</div>
+
+                        <div>
+                          <p className={`notification-message ${isRead ? "" : "unread"}`}>
+                            {notif.message}
+                          </p>
+                          <div className="notification-time">
+                            {new Date(notif.createdAt).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
+
                 <div
-                  style={{
-                    padding: "12px 20px",
-                    textAlign: "center",
-                    borderTop: "1px solid #e5e5e5",
-                    cursor: "pointer",
-                    color: "#8B2635",
-                    fontWeight: 600,
-                    fontSize: "14px",
-                  }}
+                  className="notification-footer"
                   onClick={() => {
-                    alert("Marked all as read");
+                    unread.forEach((n) => handleMarkRead(n.notificationId));
                     setShowNotifications(false);
                   }}
                 >
@@ -162,31 +144,19 @@ export default function Header({ registrarName = "Registrar" }) {
             )}
           </div>
 
-          {/* User Info */}
-          <div className="user-avatar">JD</div>
-          <span style={{ fontWeight: "600", fontSize: "15px" }}>
-            {registrarName}
-          </span>
+          <div className="user-avatar">JU</div>
+          <span>{registrarName}</span>
 
-          {/* Logout Button */}
           <button className="logout-btn" onClick={handleLogout}>
             Logout
           </button>
         </div>
       </header>
 
-      {/* Overlay for Notifications */}
       {showNotifications && (
         <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 999,
-          }}
           onClick={() => setShowNotifications(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 80 }}
         />
       )}
     </>
