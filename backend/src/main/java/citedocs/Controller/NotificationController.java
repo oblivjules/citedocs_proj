@@ -17,9 +17,9 @@ import org.springframework.web.bind.annotation.RestController;
 import citedocs.Entity.NotificationEntity;
 import citedocs.Service.NotificationService;
 
+@CrossOrigin
 @RestController
-@RequestMapping("/api/notifications")
-@CrossOrigin(origins = "http://localhost:3000")
+@RequestMapping("/notifications")
 public class NotificationController {
 
     private final NotificationService notificationService;
@@ -28,30 +28,47 @@ public class NotificationController {
         this.notificationService = notificationService;
     }
 
+    // Create (already existing)
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public NotificationEntity create(@RequestBody NotificationEntity payload) {
         return notificationService.create(payload);
     }
 
+    // Get all notifications (admin use)
     @GetMapping
     public List<NotificationEntity> findAll() {
         return notificationService.findAll();
     }
 
-    @GetMapping("/{id}")
-    public NotificationEntity findById(@PathVariable int id) {
-        return notificationService.findById(id);
+    // Get notifications for a specific user (most recent first)
+    @GetMapping("/user/{userId}")
+    public List<NotificationEntity> findByUser(@PathVariable int userId) {
+        return notificationService.findByUserId(userId);
     }
 
+    // Get only unread notifications for a specific user
+    @GetMapping("/user/{userId}/unread")
+    public List<NotificationEntity> findUnreadByUser(@PathVariable int userId) {
+        return notificationService.findUnreadByUserId(userId);
+    }
+
+    // Mark a notification as read (idempotent)
+    @PutMapping("/{id}/read")
+    public NotificationEntity markAsRead(@PathVariable int id) {
+        return notificationService.markAsRead(id);
+    }
+
+    // Update (full update)
     @PutMapping("/{id}")
     public NotificationEntity update(@PathVariable int id, @RequestBody NotificationEntity payload) {
         return notificationService.update(id, payload);
     }
 
+    // Delete
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable int id) {
         notificationService.delete(id);
     }
 }
-

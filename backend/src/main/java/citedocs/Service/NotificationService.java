@@ -1,6 +1,7 @@
 package citedocs.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,9 +24,43 @@ public class NotificationService {
         return notificationRepository.save(notification);
     }
 
+    /**
+     * Convenience helper called by other services to create a notification.
+     *
+     * @param userId recipient user id (int)
+     * @param requestId related request id (Long) - converted to int for NotificationEntity
+     * @param message message body
+     * @return saved notification
+     */
+    public NotificationEntity sendNotification(int userId, Long requestId, String message) {
+        NotificationEntity notif = new NotificationEntity();
+        notif.setUserId(userId);
+        // convert safely, if requestId is null use 0
+        notif.setRequestId(requestId != null ? Math.toIntExact(requestId) : 0);
+        notif.setMessage(message);
+        notif.setIsRead(false);
+        return notificationRepository.save(notif);
+    }
+
     @Transactional(readOnly = true)
     public List<NotificationEntity> findAll() {
         return notificationRepository.findAll();
+    }
+
+    /**
+     * List notifications for a user (most recent first).
+     */
+    @Transactional(readOnly = true)
+    public List<NotificationEntity> findByUserId(int userId) {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+
+    /**
+     * List unread notifications for a user (most recent first).
+     */
+    @Transactional(readOnly = true)
+    public List<NotificationEntity> findUnreadByUserId(int userId) {
+        return notificationRepository.findByUserIdAndIsReadFalseOrderByCreatedAtDesc(userId);
     }
 
     @Transactional(readOnly = true)
@@ -47,5 +82,19 @@ public class NotificationService {
         NotificationEntity existing = findById(id);
         notificationRepository.delete(existing);
     }
-}
 
+    /**
+     * Mark a notification as read. Idempotent (if already read, it remains read).
+     *
+     * @param id notification id
+     * @return updated notification
+     */
+    public NotificationEntity markAsRead(int id) {
+        NotificationEntity existing = findById(id);
+        if (!existing.getIsRead()) {
+            existing.setIsRead(true);
+            return notificationRepository.save(existing);
+        }
+        return existing;
+    }
+}
