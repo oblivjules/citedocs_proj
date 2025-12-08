@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "../StudentPortal.css";
 import Header from "../components/Header";
-import Footer from "../../../../components/layout/Footer";
+import Footer from "../../../../../components/layout/Footer";
 import RequestDetailsModal from "../components/RequestDetailsModal";
 import { Link } from "react-router-dom";
 

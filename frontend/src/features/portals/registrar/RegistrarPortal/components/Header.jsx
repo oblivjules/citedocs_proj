@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { useAuthContext } from "../../../auth/context/AuthContext";
-import appLogo from "../../../../assets/images/app_logo.png";
+import { useAuthContext } from "../../../../auth/context/AuthContext";
+import appLogo from "../../../../../assets/images/app_logo.png";
 
 import {
   getNotifications,
   getUnreadNotifications,
   markNotificationRead
-} from "../../../../api/notifications";
+} from "../../../../../api/notifications";
 
-import "../../../../components/NotificationStyles.css";
+import "../../../../../components/NotificationStyles.css";
 
 export default function Header({ registrarName = "Registrar" }) {
   const [showNotifications, setShowNotifications] = useState(false);
@@ -44,12 +44,8 @@ export default function Header({ registrarName = "Registrar" }) {
   /** --------------------------------------------------
    * LOAD NOTIFICATIONS
    -----------------------------------------------------*/
-  useEffect(() => {
+  const loadNotifications = useCallback(async () => {
     if (!token || !user?.userId) return;
-    loadNotifications();
-  }, [token, user]);
-
-  const loadNotifications = async () => {
     try {
       const all = await getNotifications(token, user.userId);
       const unreadList = await getUnreadNotifications(token, user.userId);
@@ -59,7 +55,11 @@ export default function Header({ registrarName = "Registrar" }) {
     } catch (err) {
       console.error("Failed to load notifications", err);
     }
-  };
+  }, [token, user]);
+
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
 
   /** --------------------------------------------------
    * MARK AS READ

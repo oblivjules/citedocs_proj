@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { useAuthContext } from "../../../auth/context/AuthContext";
-import appLogo from "../../../../assets/images/app_logo.png";
+import { useAuthContext } from "../../../../auth/context/AuthContext";
+import appLogo from "../../../../../assets/images/app_logo.png";
 
 import {
   getNotifications,
   getUnreadNotifications,
   markNotificationRead
-} from "../../../../api/notifications";
+} from "../../../../../api/notifications";
 
-import "../../../../components/NotificationStyles.css";
+import "../../../../../components/NotificationStyles.css";
 
 export default function Header({ studentName }) {
   const [showNotifications, setShowNotifications] = useState(false);
@@ -43,18 +43,18 @@ export default function Header({ studentName }) {
   /** --------------------------------------------------
    * Load Notifications
    -----------------------------------------------------*/
-  useEffect(() => {
+  const loadNotifications = useCallback(async () => {
     if (!token || !user?.userId) return;
-    loadNotifications();
-  }, [token, user]);
-
-  const loadNotifications = async () => {
     const all = await getNotifications(token, user.userId);
     const unreadList = await getUnreadNotifications(token, user.userId);
 
     setNotifications(all);
     setUnread(unreadList);
-  };
+  }, [token, user]);
+
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
 
   /** --------------------------------------------------
    * Mark a notification as read

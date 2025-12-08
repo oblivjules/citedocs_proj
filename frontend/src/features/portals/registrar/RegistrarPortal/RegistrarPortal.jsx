@@ -1,22 +1,20 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import "./RegistrarPortal.css";
 
 import Header from "./components/Header";
 import StatCard from "./components/StatCard";
 import RequestsList from "./pages/RequestsList";
 import ActivityPanel from "./components/ActivityPanel";
-import Footer from "../../../components/layout/Footer";
-import { useAuthContext } from "../../auth/context/AuthContext";
+import Footer from "../../../../components/layout/Footer";
+import { useAuthContext } from "../../../auth/context/AuthContext";
 import {
   fetchRequests,
   updateRequestStatus,
-} from "../../../api/requests";
+} from "../../../../api/requests";
 
 export default function RegistrarPortal() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const location = useLocation();
   const { token } = useAuthContext();
 
   const fallbackRequests = useMemo(

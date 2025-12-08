@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "./StudentPortal.css";
 import Header from "./components/Header";
-import Footer from "../../../components/layout/Footer";
+import Footer from "../../../../components/layout/Footer";
 import StatCard from "./components/StatCard";
 import RequestTable from "./components/RequestTable";
 import ActivityPanel from "./components/ActivityPanel";
 import RequestDetailsModal from "./components/RequestDetailsModal";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useAuthContext } from "../../auth/context/AuthContext";
-import { fetchRequests, fetchStatusLogs } from "../../../api/requests";
+import { useAuthContext } from "../../../auth/context/AuthContext";
+import { fetchRequests, fetchStatusLogs } from "../../../../api/requests";
 
 const StudentPortal = () => {
   const { user } = useAuthContext();

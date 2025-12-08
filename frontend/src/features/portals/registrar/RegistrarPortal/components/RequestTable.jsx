@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import ProofModal from "../../../../components/common/ProofModal";
+import ProofModal from "../../../../../components/common/ProofModal";
 
 export default function RequestTable({ requests, onView }) {
   const [proofModal, setProofModal] = useState({

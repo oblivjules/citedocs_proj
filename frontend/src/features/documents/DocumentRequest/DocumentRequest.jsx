@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import "../StudentPortal/StudentPortal.css";
-import Header from "../StudentPortal/components/Header";
+import "../../portals/student/StudentPortal/StudentPortal.css";
+import Header from "../../portals/student/StudentPortal/components/Header";
 import Footer from "../../../components/layout/Footer";
 import "./DocumentRequest.css";
 import { useAuthContext } from "../../auth/context/AuthContext";
