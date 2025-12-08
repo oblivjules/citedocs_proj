@@ -6,10 +6,10 @@ import RegistrarLogin from "./features/auth/Login/RegistrarLogin";
 import StudentRegister from "./features/auth/Register/StudentRegister";
 import RegistrarRegister from "./features/auth/Register/RegistrarRegister";
 
-import RegistrarPortal from "./features/documents/RegistrarPortal/RegistrarPortal";
+import RegistrarPortal from "./features/portals/registrar/RegistrarPortal/RegistrarPortal";
 import ClaimSlip from "./features/documents/ClaimSlip/ClaimSlip";
-import StudentPortal from "./features/documents/StudentPortal/StudentPortal";
-import RequestsList from "./features/documents/StudentPortal/pages/RequestsList";
+import StudentPortal from "./features/portals/student/StudentPortal/StudentPortal";
+import RequestsList from "./features/portals/student/StudentPortal/pages/RequestsList";
 import DocumentRequest from "./features/documents/DocumentRequest/DocumentRequest";
 import ForgotPasswordPage from "./features/auth/ForgotPassword/ForgotPasswordPage";
 

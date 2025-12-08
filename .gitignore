@@ -1,39 +1,16 @@
-# ================================
-# FRONTEND (React)
-# ================================
-frontend/node_modules/
-frontend/build/
-frontend/.env
-frontend/.env.local
+# Root level files
+node_modules/
 
-# ================================
-# BACKEND (Spring Boot)
-# ================================
-backend/target/
-backend/.env
-backend/.env.local
-
-# MAVEN / GRADLE WRAPPERS
-backend/.mvn/
-backend/mvnw*
-backend/mvnw.cmd
-
-# ================================
-# PAYMENT UPLOAD FOLDER
-# ================================
+# Upload folders
 uploads/
 
-# ================================
-# LOG FILES
-# ================================
+# Log files
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# ================================
-# OS / EDITOR FILES
-# ================================
+# OS / Editor files
 .DS_Store
 .vscode/
 .idea/
@@ -41,14 +18,6 @@ yarn-error.log*
 *.iml
 *.ipr
 
-# ================================
-# JAVA / STS
-# ================================
-HELP.md
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings/
-.springBeans
-.sts4-cache
+# Environment files
+.env
+.env.local
