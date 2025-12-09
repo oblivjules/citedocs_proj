@@ -162,21 +162,43 @@ const StudentPortal = () => {
     },
   ];
 
-  // Format status change message
-  const formatStatusMessage = (log, requestId) => {
+  // Format activity title and description based on status (DocuTrackr style)
+  const formatActivity = (log, requestId) => {
     const requestIdStr = requestId?.toString() || log.requestId?.toString() || "";
-    const statusMessages = {
-      PENDING: "submitted",
-      PROCESSING: "is now processing",
-      APPROVED: "has been approved",
-      COMPLETED: "has been completed",
-      REJECTED: "has been rejected",
-    };
+    const formattedId = `REQ-${requestIdStr}`;
+    const newStatus = (log.newStatus || "").toUpperCase();
+    const oldStatus = (log.oldStatus || "").toUpperCase();
+    const staffName = log.changedByName || null;
     
-    const newStatus = log.newStatus || "";
-    const statusText = statusMessages[newStatus] || `status changed to ${newStatus}`;
+    // Find document name from requests if available
+    const request = requests.find(r => (r.id?.replace('REQ-', '') === requestIdStr) || (r.requestId?.toString() === requestIdStr));
+    const documentName = request?.documentLabel || request?.documentType || "document";
     
-    return `Request REQ-${requestIdStr} ${statusText}`;
+    let title = "Request Status Changed";
+    let description = "";
+    
+    // Handle initial submission (old_status is null or "none")
+    if (!oldStatus || oldStatus === "NONE" || oldStatus === "NULL") {
+      title = "Request Submitted";
+      description = `You submitted ${formattedId} (${documentName})`;
+    } else if (newStatus === "PROCESSING") {
+      title = "Request Processing";
+      description = `Your ${formattedId} (${documentName}) is now being processed${staffName ? ` by Staff ${staffName}` : ""}.`;
+    } else if (newStatus === "APPROVED") {
+      title = "Request Approved";
+      description = `Your ${formattedId} (${documentName}) has been approved${staffName ? ` by Staff ${staffName}` : ""}. It is now ready for pick up.`;
+    } else if (newStatus === "COMPLETED") {
+      title = "Request Completed";
+      description = `Your ${formattedId} (${documentName}) has been picked up.`;
+    } else if (newStatus === "REJECTED") {
+      title = "Request Rejected";
+      description = `Your ${formattedId} (${documentName}) has been rejected${staffName ? ` by Staff ${staffName}` : ""}.`;
+    } else {
+      title = "Request Status Changed";
+      description = `Your ${formattedId} (${documentName}) status updated to ${newStatus}${staffName ? ` by Staff ${staffName}` : ""}`;
+    }
+    
+    return { title, description };
   };
 
   // Format relative time
@@ -215,11 +237,15 @@ const StudentPortal = () => {
             .slice(0, 10) // Limit to 10 most recent
             .map((log) => {
               const requestId = log.requestId?.toString() || "";
+              const activity = formatActivity(log, requestId);
               
               return {
                 id: log.logId || log.id,
-                action: formatStatusMessage(log, requestId),
-                time: formatRelativeTime(log.changedAt),
+                title: activity.title,
+                description: activity.description,
+                action: activity.description, // For backward compatibility
+                time: formatRelativeTime(log.changedAt) + " ago",
+                changedAt: log.changedAt,
                 requestId: requestId,
               };
             });
@@ -236,6 +262,7 @@ const StudentPortal = () => {
     };
 
     loadActivities();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, user?.userId]);
 
   const handleViewDetails = (request) => {

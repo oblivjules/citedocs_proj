@@ -13,18 +13,6 @@ import {
   fetchPaymentByRequestId,
 } from "../../../api/requests";
 
-// Document types matching the image
-const documentTypes = [
-  { value: "transcript", label: "Transcript of Records" },
-  { value: "enrollment", label: "Certificate of Enrollment" },
-  { value: "good-moral", label: "Good Moral Certificate" },
-  { value: "diploma", label: "Diploma Copy" },
-  { value: "grades", label: "True Copy of Grades (TCG)" },
-  { value: "transfer", label: "Transfer Credential" },
-  { value: "clearance", label: "Student Clearance" },
-  { value: "study-load", label: "Study Load" },
-  { value: "authentication", label: "Authentication/CAV/Apostille" },
-];
 
 export default function DocumentRequest() {
   const { user } = useAuthContext();
@@ -37,40 +25,7 @@ export default function DocumentRequest() {
     proofFile: null,
   });
 
-  const fallbackRequests = useMemo(
-    () => [
-      {
-        id: "REQ-2025-001",
-        documentLabel: "Transcript of Records",
-        copies: 2,
-        dateNeeded: "Nov 15, 2025",
-        status: "Processing",
-        proofUrl:
-          "https://via.placeholder.com/300x200.png?text=Proof+of+Payment",
-      },
-      {
-        id: "REQ-2025-002",
-        documentLabel: "Certificate of Enrollment",
-        copies: 1,
-        dateNeeded: "Nov 10, 2025",
-        status: "Approved",
-        proofUrl:
-          "https://via.placeholder.com/300x200.png?text=Proof+of+Payment",
-      },
-      {
-        id: "REQ-2025-003",
-        documentLabel: "Good Moral Character",
-        copies: 1,
-        dateNeeded: "Nov 5, 2025",
-        status: "Completed",
-        proofUrl:
-          "https://via.placeholder.com/300x200.png?text=Proof+of+Payment",
-      },
-    ],
-    []
-  );
-
-  const [userRequests, setUserRequests] = useState(fallbackRequests);
+  const [userRequests, setUserRequests] = useState([]);
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState(null);
   const [success, setSuccess] = useState(false);
@@ -90,7 +45,6 @@ export default function DocumentRequest() {
     });
   };
 
-
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -103,27 +57,6 @@ export default function DocumentRequest() {
     if (file) {
       setFormData({ ...formData, proofFile: file });
     }
-  };
-
-  const generateRequestId = () => {
-    const currentYear = new Date().getFullYear();
-    const yearPrefix = `REQ-${currentYear}-`;
-
-    const yearRequests = userRequests.filter((req) =>
-      req.id.startsWith(yearPrefix)
-    );
-    let maxSeq = 0;
-
-    yearRequests.forEach((req) => {
-      const seqStr = req.id.replace(yearPrefix, "");
-      const seqNum = parseInt(seqStr, 10);
-      if (!isNaN(seqNum) && seqNum > maxSeq) {
-        maxSeq = seqNum;
-      }
-    });
-
-    const nextSeq = maxSeq + 1;
-    return `${yearPrefix}${nextSeq.toString().padStart(3, "0")}`;
   };
 
   const studentName = user?.name || "Student";
@@ -161,7 +94,7 @@ export default function DocumentRequest() {
 
   const loadRequests = useCallback(async () => {
     if (!token || !user?.userId) {
-      setUserRequests(fallbackRequests);
+      setUserRequests([]);
       return;
     }
 
@@ -211,11 +144,11 @@ export default function DocumentRequest() {
     } catch (error) {
       console.error("Unable to load requests", error);
       setFetchError(error.message);
-      setUserRequests(fallbackRequests);
+      setUserRequests([]);
     } finally {
       setIsFetching(false);
     }
-  }, [token, user?.userId, fallbackRequests]);
+  }, [token, user?.userId]);
 
   useEffect(() => {
     loadRequests();
