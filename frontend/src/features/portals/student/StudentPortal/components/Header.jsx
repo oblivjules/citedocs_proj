@@ -72,6 +72,29 @@ export default function Header({ studentName }) {
   };
 
   /** --------------------------------------------------
+   * Mark all notifications as read
+   -----------------------------------------------------*/
+  const handleMarkAllRead = async () => {
+    if (!token || unread.length === 0) return;
+    
+    try {
+      // Mark all unread notifications as read concurrently
+      await Promise.all(
+        unread.map((n) => markNotificationRead(token, n.notificationId))
+      );
+
+      // Update state to reflect all notifications as read
+      setUnread([]);
+      setNotifications(
+        notifications.map((n) => ({ ...n, isRead: true }))
+      );
+      setShowNotifications(false);
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+    }
+  };
+
+  /** --------------------------------------------------
    * Choose appropriate icon based on message
    -----------------------------------------------------*/
   const getIcon = (msg) => {
@@ -145,7 +168,6 @@ export default function Header({ studentName }) {
                         className={`notification-item ${isRead ? "read" : "unread"}`}
                         onClick={() => handleMarkRead(notif.notificationId)}
                       >
-                        <div className="notification-icon">{getIcon(notif.message)}</div>
 
                         <div>
                           <p className={`notification-message ${isRead ? "" : "unread"}`}>
@@ -163,10 +185,7 @@ export default function Header({ studentName }) {
 
                 <div
                   className="notification-footer"
-                  onClick={() => {
-                    unread.forEach((n) => handleMarkRead(n.notificationId));
-                    setShowNotifications(false);
-                  }}
+                  onClick={handleMarkAllRead}
                 >
                   Mark all as read
                 </div>

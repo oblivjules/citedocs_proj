@@ -10,8 +10,6 @@ import citedocs.Entity.DocumentsEntity;
 import citedocs.Entity.RequestsEntity;
 import citedocs.Controller.StatusUpdateRequest;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
 import java.time.LocalDate;
 import java.time.Year;
 import citedocs.Entity.RequestStatusLogEntity;
@@ -145,17 +143,46 @@ public class RequestsService {
         if (newStatus == null)
             throw new IllegalArgumentException("Invalid status: " + payload.getStatus());
 
+        // Check if status is already the same
+        if (oldStatus == newStatus) {
+            throw new IllegalArgumentException("Request is already " + newStatus);
+        }
+
         existing.setStatus(newStatus);
 
-        if (payload.getDateReady() != null && !payload.getDateReady().isEmpty()) {
-            try {
-                existing.setDateReady(OffsetDateTime.parse(payload.getDateReady()).toLocalDateTime());
-            } catch (DateTimeParseException ex) {
+        // --------------------------------------------------------
+        // APPROVED LOGIC: Set date_ready ONCE when first approved
+        // --------------------------------------------------------
+        boolean isFirstTimeApproved = (oldStatus != RequestsEntity.Status.APPROVED 
+                                        && newStatus == RequestsEntity.Status.APPROVED);
+
+        if (isFirstTimeApproved && existing.getDateReady() == null) {
+            // Only set date_ready if it's the first time being approved AND it's not already set
+            LocalDate parsedDateReady = null;
+            
+            if (payload.getDateReady() != null && !payload.getDateReady().trim().isEmpty()) {
                 try {
-                    existing.setDateReady(LocalDateTime.parse(payload.getDateReady()));
-                } catch (DateTimeParseException ignored) {}
+                    String dateStr = payload.getDateReady().trim();
+                    // Handle ISO format with time (e.g., "2025-12-11T00:00:00" or "2025-12-11")
+                    if (dateStr.contains("T")) {
+                        dateStr = dateStr.split("T")[0];
+                    }
+                    // Try parsing as LocalDate (YYYY-MM-DD format)
+                    parsedDateReady = LocalDate.parse(dateStr);
+                } catch (Exception e) {
+                    // If parsing fails, will use today's date as fallback
+                }
+            }
+            
+            // Set date_ready: use parsed date or fallback to today
+            // Use noon (12:00:00) instead of midnight to avoid timezone conversion issues
+            if (parsedDateReady != null) {
+                existing.setDateReady(parsedDateReady.atTime(12, 0, 0));
+            } else {
+                existing.setDateReady(LocalDate.now().atTime(12, 0, 0));
             }
         }
+        // If not first time approved, don't touch date_ready
 
         RequestsEntity updated = requestsRepository.save(existing);
 
@@ -176,6 +203,7 @@ public class RequestsService {
             Optional<ClaimSlipEntity> existingClaim = claimSlipRepository.findByRequestId(id);
 
             if (existingClaim.isEmpty()) {
+                // Create claim slip only once when first approved
                 ClaimSlipEntity claimSlip = new ClaimSlipEntity();
                 claimSlip.setRequestId(id);
                 
@@ -185,26 +213,18 @@ public class RequestsService {
                 String claimNumber = String.format("REQ-%d-%03d", year, id.intValue());
                 claimSlip.setClaimNumber(claimNumber);
                 
-                // Set date ready if provided
-                if (existing.getDateReady() != null) {
-                    claimSlip.setDateReady(existing.getDateReady().toLocalDate());
-                } else if (payload.getDateReady() != null && !payload.getDateReady().isEmpty()) {
-                    try {
-                        LocalDate dateReady = LocalDate.parse(payload.getDateReady().split("T")[0]);
-                        claimSlip.setDateReady(dateReady);
-                    } catch (Exception e) {
-                        // If parsing fails, set to today
-                        claimSlip.setDateReady(LocalDate.now());
-                    }
-                } else {
-                    claimSlip.setDateReady(LocalDate.now());
-                }
+                // Set date ready: use request's date_ready or fallback to today
+                LocalDate claimDate = (updated.getDateReady() != null) 
+                    ? updated.getDateReady().toLocalDate() 
+                    : LocalDate.now();
+                claimSlip.setDateReady(claimDate);
                 
-                // Set issued by (could be from security context, for now set to 0)
-                claimSlip.setIssuedBy(0);
+                // Set issued by to the registrar who approved it
+                claimSlip.setIssuedBy(registrarUserId != null ? registrarUserId : 0);
                 
                 claimSlipRepository.save(claimSlip);
             }
+            // If claim slip already exists, don't modify it
         }
 
         // SEND NOTIFICATION TO STUDENT

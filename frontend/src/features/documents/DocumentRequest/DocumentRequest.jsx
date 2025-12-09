@@ -135,11 +135,18 @@ export default function DocumentRequest() {
               dateNeeded: formatDate(req.dateNeeded),
               status: req.status || "PENDING",
               proofUrl: proofUrl,
+              createdAt: req.createdAt,
             };
           })
         );
 
-        setUserRequests(requestsWithPayments);
+        // Sort by createdAt descending (most recent first)
+        const sortedRequests = requestsWithPayments.sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA; // Most recent first
+        });
+        setUserRequests(sortedRequests);
       }
     } catch (error) {
       console.error("Unable to load requests", error);

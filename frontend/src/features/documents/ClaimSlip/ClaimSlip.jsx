@@ -43,11 +43,8 @@ const ClaimSlip = () => {
         // Fetch claim slip - required for approved requests
         let claimSlip = null;
         try {
-          console.log("Fetching claim slip for requestId:", requestId, "type:", typeof requestId);
           claimSlip = await fetchClaimSlip({ requestId, token });
-          console.log("Claim slip fetched successfully:", claimSlip);
         } catch (err) {
-          console.error("Error fetching claim slip:", err);
           // Claim slip is required - if not found (404), show user-friendly error
           // Don't log 404s as they're expected for non-approved requests
           const isNotFound = err.message && (err.message.includes('404') || err.message.includes('not found'));
