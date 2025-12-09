@@ -7,8 +7,9 @@ const ActivityPanel = ({ activities }) => (
       <div className="activity-item" key={a.id}>
         <div className="activity-dot"></div>
         <div className="activity-content">
-          <p>{a.action}</p>
-          <small>{a.time}</small>
+          <p className="activity-title">{a.title || "Request Status Changed"}</p>
+          <p className="activity-description">{a.description || a.action || ""}</p>
+          <small className="activity-time">{a.time}</small>
         </div>
       </div>
     ))}

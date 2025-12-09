@@ -250,11 +250,11 @@
 .back-btn {
   display: inline-block;
   margin-bottom: 20px;
-  padding: 8px 16px;
+  padding: 10px 18px;
   background-color: #8B2635; /* maroon */
-  color: white;
+  color: #FFFFFF;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   font-family: "Montserrat", sans-serif;
   text-decoration: none;

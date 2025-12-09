@@ -12,13 +12,17 @@ import citedocs.Controller.StatusUpdateRequest;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
+import java.time.LocalDate;
+import java.time.Year;
 import citedocs.Entity.RequestStatusLogEntity;
+import citedocs.Entity.ClaimSlipEntity;
 import citedocs.Exception.ResourceNotFoundException;
 import citedocs.Repository.DocumentsRepository;
 import citedocs.Repository.RequestsRepository;
 import citedocs.Repository.RequestStatusLogRepository;
 import citedocs.Repository.UserRepository;
 import citedocs.Repository.PaymentRepository;
+import citedocs.Repository.ClaimSlipRepository;
 import citedocs.Entity.UserEntity;
 import citedocs.Service.NotificationService;
 
@@ -31,6 +35,7 @@ public class RequestsService {
     private final RequestStatusLogRepository requestStatusLogRepository;
     private final UserRepository userRepository;
     private final PaymentRepository paymentRepository;
+    private final ClaimSlipRepository claimSlipRepository;
     private final NotificationService notificationService;
 
     public RequestsService(RequestsRepository requestsRepository,
@@ -38,12 +43,14 @@ public class RequestsService {
                            RequestStatusLogRepository requestStatusLogRepository,
                            UserRepository userRepository,
                            PaymentRepository paymentRepository,
+                           ClaimSlipRepository claimSlipRepository,
                            NotificationService notificationService) {
         this.requestsRepository = requestsRepository;
         this.documentsRepository = documentsRepository;
         this.requestStatusLogRepository = requestStatusLogRepository;
         this.userRepository = userRepository;
         this.paymentRepository = paymentRepository;
+        this.claimSlipRepository = claimSlipRepository;
         this.notificationService = notificationService;
     }
 
@@ -129,7 +136,7 @@ public class RequestsService {
     }
 
     // UPDATE STATUS (Notify Student)
-    public RequestsEntity updateStatus(Long id, StatusUpdateRequest payload) {
+    public RequestsEntity updateStatus(Long id, StatusUpdateRequest payload, Integer registrarUserId) {
 
         RequestsEntity existing = findById(id);
         RequestsEntity.Status oldStatus = existing.getStatus();
@@ -157,21 +164,65 @@ public class RequestsService {
         log.setRequestId(id);
         log.setOldStatus(oldStatus != null ? oldStatus.toString() : null);
         log.setNewStatus(newStatus.toString());
-        log.setChangedBy(existing.getUserId() != null ? existing.getUserId().intValue() : 0);
+        // Use registrar's user ID (the one updating the status), not the student's
+        log.setChangedBy(registrarUserId != null ? registrarUserId : 0);
         log.setRemarks(payload.getRemarks());
 
         requestStatusLogRepository.save(log);
 
+        // GENERATE CLAIM SLIP IF STATUS IS APPROVED
+        if (newStatus == RequestsEntity.Status.APPROVED) {
+            // Check if claim slip already exists
+            Optional<ClaimSlipEntity> existingClaim = claimSlipRepository.findByRequestId(id);
+
+            if (existingClaim.isEmpty()) {
+                ClaimSlipEntity claimSlip = new ClaimSlipEntity();
+                claimSlip.setRequestId(id);
+                
+                // Generate claim number: REQ-YYYY-XXX format
+                int year = Year.now().getValue();
+                // Use request ID as sequence number, padded to 3 digits
+                String claimNumber = String.format("REQ-%d-%03d", year, id.intValue());
+                claimSlip.setClaimNumber(claimNumber);
+                
+                // Set date ready if provided
+                if (existing.getDateReady() != null) {
+                    claimSlip.setDateReady(existing.getDateReady().toLocalDate());
+                } else if (payload.getDateReady() != null && !payload.getDateReady().isEmpty()) {
+                    try {
+                        LocalDate dateReady = LocalDate.parse(payload.getDateReady().split("T")[0]);
+                        claimSlip.setDateReady(dateReady);
+                    } catch (Exception e) {
+                        // If parsing fails, set to today
+                        claimSlip.setDateReady(LocalDate.now());
+                    }
+                } else {
+                    claimSlip.setDateReady(LocalDate.now());
+                }
+                
+                // Set issued by (could be from security context, for now set to 0)
+                claimSlip.setIssuedBy(0);
+                
+                claimSlipRepository.save(claimSlip);
+            }
+        }
+
         // SEND NOTIFICATION TO STUDENT
         if (existing.getUserId() != null) {
             int studentUserId = existing.getUserId().intValue();
-            String docName = existing.getDocument() != null ? existing.getDocument().getName() : "your document";
-
+            String requestIdStr = String.format("REQ-%d", existing.getRequestId());
+            String statusStr = newStatus.toString().toUpperCase();
+            
             String notifMessage = String.format(
-                    "Your request for %s is now: %s",
-                    docName,
-                    newStatus.toString()
+                    "Your document request (%s) is now %s.",
+                    requestIdStr,
+                    statusStr
             );
+            
+            // Add remarks if provided
+            if (payload.getRemarks() != null && !payload.getRemarks().trim().isEmpty()) {
+                notifMessage += " Remarks: " + payload.getRemarks().trim();
+            }
 
             notificationService.sendNotification(
                     studentUserId,

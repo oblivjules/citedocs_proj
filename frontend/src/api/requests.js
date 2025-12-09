@@ -1,7 +1,7 @@
 import { apiRequest } from "./client";
 
 const REQUESTS_BASE = "/api/requests";
-const CLAIM_SLIPS_BASE = "/api/claimslips";
+const CLAIM_SLIPS_BASE = "/api/claim-slips";
 
 export const fetchRequests = ({ token, query } = {}) =>
   apiRequest(REQUESTS_BASE, {
@@ -32,18 +32,32 @@ export const updateRequest = ({ id, payload, token }) =>
     token,
   });
 
-export const updateRequestStatus = ({ id, status, remarks, token }) =>
-  apiRequest(`${REQUESTS_BASE}/${id}/status`, {
+export const updateRequestStatus = ({ id, status, remarks, dateReady, token }) => {
+  const body = {
+    status: status ? status.toUpperCase() : status,
+    remarks: remarks || null,
+  };
+  
+  // Only include dateReady if provided and status is approved
+  if (dateReady && status?.toLowerCase() === "approved") {
+    body.dateReady = dateReady;
+  }
+  
+  return apiRequest(`${REQUESTS_BASE}/${id}/status`, {
     method: "PUT",
-    body: { status: status ? status.toUpperCase() : status, remarks, dateReady: new Date().toISOString() },
+    body,
     token,
   });
+};
 
-export const fetchClaimSlip = ({ requestId, token }) =>
-  apiRequest(`${CLAIM_SLIPS_BASE}/${requestId}`, {
+export const fetchClaimSlip = ({ requestId, token }) => {
+  // Ensure requestId is a number
+  const numericRequestId = typeof requestId === 'string' ? parseInt(requestId, 10) : requestId;
+  return apiRequest(`${CLAIM_SLIPS_BASE}?requestId=${numericRequestId}`, {
     method: "GET",
     token,
   });
+};
 
 const STATUS_LOGS_BASE = "/api/request-status-logs";
 

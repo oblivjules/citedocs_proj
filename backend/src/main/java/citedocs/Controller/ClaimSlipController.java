@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -34,7 +35,13 @@ public class ClaimSlipController {
     }
 
     @GetMapping
-    public List<ClaimSlipEntity> findAll() {
+    public Object findAll(@RequestParam(required = false) Long requestId) {
+        if (requestId != null) {
+            return claimSlipService.findByRequestId(requestId)
+                    .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                            org.springframework.http.HttpStatus.NOT_FOUND, 
+                            "Claim slip not found for request ID: " + requestId));
+        }
         return claimSlipService.findAll();
     }
 

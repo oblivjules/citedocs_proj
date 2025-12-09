@@ -7,6 +7,7 @@ import StudentRegister from "./features/auth/Register/StudentRegister";
 import RegistrarRegister from "./features/auth/Register/RegistrarRegister";
 
 import RegistrarPortal from "./features/portals/registrar/RegistrarPortal/RegistrarPortal";
+import AllRequests from "./features/portals/registrar/RegistrarPortal/pages/AllRequests";
 import ClaimSlip from "./features/documents/ClaimSlip/ClaimSlip";
 import StudentPortal from "./features/portals/student/StudentPortal/StudentPortal";
 import RequestsList from "./features/portals/student/StudentPortal/pages/RequestsList";
@@ -112,7 +113,9 @@ function AppContent() {
                 <Navigate to="/registrar-login" replace />
               )
             }
-          />
+          >
+            <Route path="all-requests" element={<AllRequests />} />
+          </Route>
 
           {/* Claim Slip */}
           <Route path="/claim/:id" element={<ClaimSlip />} />
