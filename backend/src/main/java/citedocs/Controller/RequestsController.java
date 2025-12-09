@@ -2,6 +2,8 @@ package citedocs.Controller;
 
 import java.util.List;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -16,7 +18,9 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import citedocs.Entity.RequestsEntity;
+import citedocs.Entity.UserEntity;
 import citedocs.Service.RequestsService;
+import citedocs.Service.UserService;
 
 @RestController
 @RequestMapping("/api/requests")
@@ -24,9 +28,11 @@ import citedocs.Service.RequestsService;
 public class RequestsController {
 
     private final RequestsService requestsService;
+    private final UserService userService;
 
-    public RequestsController(RequestsService requestsService) {
+    public RequestsController(RequestsService requestsService, UserService userService) {
         this.requestsService = requestsService;
+        this.userService = userService;
     }
 
     @PostMapping
@@ -59,8 +65,22 @@ public class RequestsController {
     }
 
     @PutMapping("/{id}/status")
-    public RequestsEntity updateStatus(@PathVariable Long id, @RequestBody StatusUpdateRequest payload) {
-        return requestsService.updateStatus(id, payload);
+    public RequestsEntity updateStatus(@PathVariable Long id, @RequestBody StatusUpdateRequest payload, HttpServletRequest request) {
+        // Get the authenticated user ID from the request
+        Object userIdAttr = request.getAttribute("userId");
+        if (userIdAttr == null) {
+            throw new RuntimeException("Unauthorized: No user ID found in request");
+        }
+        
+        Integer userId = Integer.parseInt(userIdAttr.toString());
+        
+        // Validate that the user is a registrar
+        UserEntity user = userService.findById(userId);
+        if (user.getRole() != UserEntity.Role.REGISTRAR) {
+            throw new RuntimeException("Unauthorized: Only registrars can update request status");
+        }
+        
+        return requestsService.updateStatus(id, payload, userId);
     }
 }
 

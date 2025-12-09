@@ -1,6 +1,7 @@
 package citedocs.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,11 @@ public class ClaimSlipService {
     public ClaimSlipEntity findById(int id) {
         return claimSlipRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ClaimSlip", "id", id));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<ClaimSlipEntity> findByRequestId(Long requestId) {
+        return claimSlipRepository.findByRequestId(requestId);
     }
 
     public ClaimSlipEntity update(int id, ClaimSlipEntity payload) {

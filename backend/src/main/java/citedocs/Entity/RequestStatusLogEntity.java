@@ -37,6 +37,10 @@ public class RequestStatusLogEntity {
     @Column(name = "changed_at", updatable = false)
     private LocalDateTime changedAt;
 
+    // Transient field for enriched responses (populated by service)
+    @jakarta.persistence.Transient
+    private String changedByName;  // Staff name from UserEntity
+
     @PrePersist
     private void onChange() {
         changedAt = LocalDateTime.now();
@@ -96,6 +100,14 @@ public class RequestStatusLogEntity {
 
     public void setChangedAt(LocalDateTime changedAt) {
         this.changedAt = changedAt;
+    }
+
+    public String getChangedByName() {
+        return changedByName;
+    }
+
+    public void setChangedByName(String changedByName) {
+        this.changedByName = changedByName;
     }
 }
 
