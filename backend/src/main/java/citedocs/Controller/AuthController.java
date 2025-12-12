@@ -7,6 +7,7 @@ import citedocs.Security.JwtUtil;
 import citedocs.Service.AuthService;
 import citedocs.Entity.UserEntity;
 import citedocs.Entity.UserEntity.Role;
+import citedocs.DTO.UserDTO;
 
 import java.util.Map;
 
@@ -27,24 +28,46 @@ public class AuthController {
     // ======================================================
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
+        try {
+            String email = body.get("email");
+            String password = body.get("password");
 
-        String email = body.get("email");
-        String password = body.get("password");
+            // Validate input
+            if (email == null || email.trim().isEmpty()) {
+                return ResponseEntity.status(400).body(Map.of(
+                        "message", "Email is required"
+                ));
+            }
 
-        UserEntity user = authService.authenticate(email, password);
+            if (password == null || password.trim().isEmpty()) {
+                return ResponseEntity.status(400).body(Map.of(
+                        "message", "Password is required"
+                ));
+            }
 
-        if (user == null) {
-            return ResponseEntity.status(401).body(Map.of(
-                    "message", "Invalid credentials"
+            UserEntity user = authService.authenticate(email.trim(), password);
+
+            if (user == null) {
+                return ResponseEntity.status(401).body(Map.of(
+                        "message", "Invalid email or password"
+                ));
+            }
+
+            String token = jwtUtil.generateToken(String.valueOf(user.getUserId()));
+
+            // Return UserDTO instead of UserEntity to exclude sensitive data
+            UserDTO userDTO = new UserDTO(user);
+
+            return ResponseEntity.ok(Map.of(
+                    "token", token,
+                    "user", userDTO
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of(
+                    "message", "An error occurred during login",
+                    "error", e.getMessage()
             ));
         }
-
-        String token = jwtUtil.generateToken(String.valueOf(user.getUserId()));
-
-        return ResponseEntity.ok(Map.of(
-                "token", token,
-                "user", user
-        ));
     }
 
     // ======================================================
@@ -60,24 +83,55 @@ public class AuthController {
             String password = body.get("password");
             String role = body.get("role");         // "STUDENT" or "REGISTRAR"
             String studentId = body.get("studentId");
-            String adminId = body.get("adminId");
+
+            // Validate inputs
+            if (firstName == null || firstName.trim().isEmpty() ||
+                lastName == null || lastName.trim().isEmpty() ||
+                email == null || email.trim().isEmpty() ||
+                password == null || password.trim().isEmpty() ||
+                role == null || role.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "All required fields must be provided"
+                ));
+            }
+
+            // SECURITY: Prevent unauthorized role registration
+            // Only allow STUDENT role registration through public endpoint
+            // REGISTRAR accounts must be created by existing registrars
+            Role userRole;
+            try {
+                userRole = Role.valueOf(role.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Invalid role. Only STUDENT registration is allowed."
+                ));
+            }
+
+            if (userRole == Role.REGISTRAR) {
+                return ResponseEntity.status(403).body(Map.of(
+                        "error", "Forbidden: Registrar accounts cannot be created through public registration"
+                ));
+            }
 
             // Convert names → one full name (because UserEntity only has `name`)
-            String fullName = firstName + " " + lastName;
+            String fullName = firstName.trim() + " " + lastName.trim();
 
             // Save user
             UserEntity user = authService.registerUser(
                     fullName,
-                    email,
+                    email.trim(),
                     password,
-                    Role.valueOf(role),   // ENUM
-                    studentId,
-                    adminId
+                    userRole,
+                    studentId != null ? studentId.trim() : null,
+                    null  // adminId is null for students
             );
+
+            // Return UserDTO instead of UserEntity to exclude sensitive data
+            UserDTO userDTO = new UserDTO(user);
 
             return ResponseEntity.ok(Map.of(
                     "message", "Registration successful",
-                    "user", user
+                    "user", userDTO
             ));
 
         } catch (RuntimeException e) {
