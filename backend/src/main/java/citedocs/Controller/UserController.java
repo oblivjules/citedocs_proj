@@ -24,71 +24,24 @@ public class UserController {
         this.userService = userService;
     }
 
-    // Create user - requires authentication and REGISTRAR role only
+    // Create user
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody UserEntity user, HttpServletRequest request) {
-        // Verify user is authenticated
-        Object userIdAttr = request.getAttribute("userId");
-        if (userIdAttr == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
-        }
-
-        int authenticatedUserId = Integer.parseInt(userIdAttr.toString());
-        UserEntity authenticatedUser = userService.findById(authenticatedUserId);
-        
-        // Only registrars can create users
-        if (authenticatedUser == null || authenticatedUser.getRole() != UserEntity.Role.REGISTRAR) {
-            return ResponseEntity.status(403).body(Map.of("message", "Forbidden: Only registrars can create users"));
-        }
-
+    public ResponseEntity<UserDTO> create(@RequestBody UserEntity user) {
         UserEntity created = userService.create(user);
         return ResponseEntity.ok(new UserDTO(created));
     }
 
-    // Get all users - requires authentication and REGISTRAR role only
+    // Get all users
     @GetMapping
-    public ResponseEntity<?> findAll(HttpServletRequest request) {
-        // Verify user is authenticated
-        Object userIdAttr = request.getAttribute("userId");
-        if (userIdAttr == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
-        }
-
-        int authenticatedUserId = Integer.parseInt(userIdAttr.toString());
-        UserEntity authenticatedUser = userService.findById(authenticatedUserId);
-        
-        // Only registrars can see all users
-        if (authenticatedUser == null || authenticatedUser.getRole() != UserEntity.Role.REGISTRAR) {
-            return ResponseEntity.status(403).body(Map.of("message", "Forbidden: Only registrars can view all users"));
-        }
-
-        List<UserDTO> users = userService.findAll().stream()
+    public List<UserDTO> findAll() {
+        return userService.findAll().stream()
                 .map(UserDTO::new)
                 .collect(Collectors.toList());
-        return ResponseEntity.ok(users);
     }
 
-    // Get user by ID - requires authentication
+    // Get user by ID
     @GetMapping("/{id}")
-    public ResponseEntity<?> findById(@PathVariable int id, HttpServletRequest request) {
-        // Verify user is authenticated
-        Object userIdAttr = request.getAttribute("userId");
-        if (userIdAttr == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
-        }
-
-        int authenticatedUserId = Integer.parseInt(userIdAttr.toString());
-        UserEntity authenticatedUser = userService.findById(authenticatedUserId);
-        
-        // Users can only see their own data, unless they're a registrar
-        if (authenticatedUser == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
-        }
-        
-        if (authenticatedUserId != id && authenticatedUser.getRole() != UserEntity.Role.REGISTRAR) {
-            return ResponseEntity.status(403).body(Map.of("message", "Forbidden: You can only view your own data"));
-        }
-
+    public ResponseEntity<UserDTO> findById(@PathVariable int id) {
         UserEntity user = userService.findById(id);
         if (user == null) {
             return ResponseEntity.notFound().build();
@@ -122,15 +75,6 @@ public class UserController {
             // Don't allow password updates here - password should be changed via dedicated endpoint
             payload.setPassword(existingUser.getPassword());
         }
-
-        // Prevent role changes - users cannot change their own role
-        if (payload.getRole() != null && payload.getRole() != existingUser.getRole()) {
-            return ResponseEntity.status(403).body(Map.of("message", "Forbidden: You cannot change your role"));
-        }
-
-        // Prevent changing student_id or admin_id
-        payload.setSid(existingUser.getSid());
-        payload.setAid(existingUser.getAid());
 
         UserEntity updated = userService.update(id, payload);
         return ResponseEntity.ok(new UserDTO(updated));

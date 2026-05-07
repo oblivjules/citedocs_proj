@@ -83,47 +83,19 @@ public class AuthController {
             String password = body.get("password");
             String role = body.get("role");         // "STUDENT" or "REGISTRAR"
             String studentId = body.get("studentId");
-
-            // Validate inputs
-            if (firstName == null || firstName.trim().isEmpty() ||
-                lastName == null || lastName.trim().isEmpty() ||
-                email == null || email.trim().isEmpty() ||
-                password == null || password.trim().isEmpty() ||
-                role == null || role.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "error", "All required fields must be provided"
-                ));
-            }
-
-            // SECURITY: Prevent unauthorized role registration
-            // Only allow STUDENT role registration through public endpoint
-            // REGISTRAR accounts must be created by existing registrars
-            Role userRole;
-            try {
-                userRole = Role.valueOf(role.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "error", "Invalid role. Only STUDENT registration is allowed."
-                ));
-            }
-
-            if (userRole == Role.REGISTRAR) {
-                return ResponseEntity.status(403).body(Map.of(
-                        "error", "Forbidden: Registrar accounts cannot be created through public registration"
-                ));
-            }
+            String adminId = body.get("adminId");
 
             // Convert names → one full name (because UserEntity only has `name`)
-            String fullName = firstName.trim() + " " + lastName.trim();
+            String fullName = firstName + " " + lastName;
 
             // Save user
             UserEntity user = authService.registerUser(
                     fullName,
-                    email.trim(),
+                    email,
                     password,
-                    userRole,
-                    studentId != null ? studentId.trim() : null,
-                    null  // adminId is null for students
+                    Role.valueOf(role),   // ENUM
+                    studentId,
+                    adminId
             );
 
             // Return UserDTO instead of UserEntity to exclude sensitive data

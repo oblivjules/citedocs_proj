@@ -5,9 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.Map;
-
-import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,15 +18,12 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import citedocs.Entity.PaymentEntity;
-import citedocs.Entity.RequestsEntity;
-import citedocs.Entity.UserEntity;
 import citedocs.Service.PaymentService;
-import citedocs.Service.RequestsService;
-import citedocs.Service.UserService;
 
 @RestController
 @RequestMapping("/api/payments")
@@ -36,57 +31,21 @@ import citedocs.Service.UserService;
 public class PaymentController {
 
     private final PaymentService paymentService;
-    private final RequestsService requestsService;
-    private final UserService userService;
 
-    public PaymentController(PaymentService paymentService, RequestsService requestsService, UserService userService) {
+    public PaymentController(PaymentService paymentService) {
         this.paymentService = paymentService;
-        this.requestsService = requestsService;
-        this.userService = userService;
     }
 
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody PaymentEntity payload, HttpServletRequest request) {
-        // Verify user is authenticated
-        Object userIdAttr = request.getAttribute("userId");
-        if (userIdAttr == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
-        }
-
-        int authenticatedUserId = Integer.parseInt(userIdAttr.toString());
-        
-        // Verify the user owns the request associated with this payment
-        if (payload.getRequestId() != null) {
-            RequestsEntity requestEntity = requestsService.findById(payload.getRequestId());
-            if (requestEntity.getUserId().intValue() != authenticatedUserId) {
-                return ResponseEntity.status(403).body(Map.of("message", "Forbidden: You can only create payments for your own requests"));
-            }
-        }
-
-        PaymentEntity created = paymentService.create(payload);
-        return ResponseEntity.ok(created);
+    public PaymentEntity create(@RequestBody PaymentEntity payload) {
+        return paymentService.create(payload);
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<?> uploadPayment(
+    public PaymentEntity uploadPayment(
         @RequestParam("requestId") Long requestId,
         @RequestParam("proofFile") MultipartFile proofFile,
-        @RequestParam(value = "remarks", required = false) String remarks,
-        HttpServletRequest request) {
-        
-        // Verify user is authenticated
-        Object userIdAttr = request.getAttribute("userId");
-        if (userIdAttr == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
-        }
-
-        int authenticatedUserId = Integer.parseInt(userIdAttr.toString());
-        
-        // Verify the user owns the request
-        RequestsEntity requestEntity = requestsService.findById(requestId);
-        if (requestEntity.getUserId().intValue() != authenticatedUserId) {
-            return ResponseEntity.status(403).body(Map.of("message", "Forbidden: You can only upload payments for your own requests"));
-        }
+        @RequestParam(value = "remarks", required = false) String remarks) {
     try {
         // Create uploads directory if not exists
         String uploadDir = "uploads/payments/";
@@ -115,15 +74,12 @@ public class PaymentController {
         payment.setProofOfPayment(storedName);
         payment.setRemarks(remarks);
 
-        PaymentEntity created = paymentService.create(payment);
-        return ResponseEntity.ok(created);
+        return paymentService.create(payment);
 
     } catch (IOException e) {
-        return ResponseEntity.status(500).body(Map.of("error", "File upload failed: " + e.getMessage()));
-    } catch (Exception e) {
-        return ResponseEntity.status(500).body(Map.of("error", "An error occurred: " + e.getMessage()));
+        throw new RuntimeException("File upload failed", e);
     }
-    }
+}
 
     @GetMapping("/file/{filename}")
     public ResponseEntity<?> getFile(@PathVariable String filename) {
@@ -142,80 +98,17 @@ public class PaymentController {
 
 
     @GetMapping
-    public ResponseEntity<?> findAll(HttpServletRequest request) {
-        // Verify user is authenticated
-        Object userIdAttr = request.getAttribute("userId");
-        if (userIdAttr == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
-        }
-
-        int authenticatedUserId = Integer.parseInt(userIdAttr.toString());
-        UserEntity authenticatedUser = userService.findById(authenticatedUserId);
-        
-        if (authenticatedUser == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
-        }
-
-        // Only registrars can see all payments
-        if (authenticatedUser.getRole() != UserEntity.Role.REGISTRAR) {
-            return ResponseEntity.status(403).body(Map.of("message", "Forbidden: Only registrars can view all payments"));
-        }
-
-        return ResponseEntity.ok(paymentService.findAll());
+    public List<PaymentEntity> findAll() {
+        return paymentService.findAll();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> findById(@PathVariable int id, HttpServletRequest request) {
-        // Verify user is authenticated
-        Object userIdAttr = request.getAttribute("userId");
-        if (userIdAttr == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
-        }
-
-        int authenticatedUserId = Integer.parseInt(userIdAttr.toString());
-        UserEntity authenticatedUser = userService.findById(authenticatedUserId);
-        
-        if (authenticatedUser == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
-        }
-
-        PaymentEntity payment = paymentService.findById(id);
-        if (payment == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        // Check if user owns the request associated with this payment
-        RequestsEntity requestEntity = requestsService.findById(payment.getRequestId());
-        if (requestEntity.getUserId().intValue() != authenticatedUserId && 
-            authenticatedUser.getRole() != UserEntity.Role.REGISTRAR) {
-            return ResponseEntity.status(403).body(Map.of("message", "Forbidden: You can only view payments for your own requests"));
-        }
-
-        return ResponseEntity.ok(payment);
+    public PaymentEntity findById(@PathVariable int id) {
+        return paymentService.findById(id);
     }
 
     @GetMapping("/request/{requestId}")
-    public ResponseEntity<?> findByRequestId(@PathVariable Long requestId, HttpServletRequest request) {
-        // Verify user is authenticated
-        Object userIdAttr = request.getAttribute("userId");
-        if (userIdAttr == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
-        }
-
-        int authenticatedUserId = Integer.parseInt(userIdAttr.toString());
-        UserEntity authenticatedUser = userService.findById(authenticatedUserId);
-        
-        if (authenticatedUser == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
-        }
-
-        // Verify the user owns the request
-        RequestsEntity requestEntity = requestsService.findById(requestId);
-        if (requestEntity.getUserId().intValue() != authenticatedUserId && 
-            authenticatedUser.getRole() != UserEntity.Role.REGISTRAR) {
-            return ResponseEntity.status(403).body(Map.of("message", "Forbidden: You can only view payments for your own requests"));
-        }
-
+    public ResponseEntity<?> findByRequestId(@PathVariable Long requestId) {
         PaymentEntity payment = paymentService.findByRequestId(requestId);
         if (payment == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
@@ -224,56 +117,14 @@ public class PaymentController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable int id, @RequestBody PaymentEntity payload, HttpServletRequest request) {
-        // Verify user is authenticated
-        Object userIdAttr = request.getAttribute("userId");
-        if (userIdAttr == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
-        }
-
-        int authenticatedUserId = Integer.parseInt(userIdAttr.toString());
-        
-        PaymentEntity existingPayment = paymentService.findById(id);
-        if (existingPayment == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        // Verify the user owns the request associated with this payment
-        RequestsEntity requestEntity = requestsService.findById(existingPayment.getRequestId());
-        if (requestEntity.getUserId().intValue() != authenticatedUserId) {
-            return ResponseEntity.status(403).body(Map.of("message", "Forbidden: You can only update payments for your own requests"));
-        }
-
-        // Don't allow changing requestId
-        payload.setRequestId(existingPayment.getRequestId());
-
-        PaymentEntity updated = paymentService.update(id, payload);
-        return ResponseEntity.ok(updated);
+    public PaymentEntity update(@PathVariable int id, @RequestBody PaymentEntity payload) {
+        return paymentService.update(id, payload);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable int id, HttpServletRequest request) {
-        // Verify user is authenticated
-        Object userIdAttr = request.getAttribute("userId");
-        if (userIdAttr == null) {
-            return ResponseEntity.status(401).body(Map.of("message", "Unauthorized"));
-        }
-
-        int authenticatedUserId = Integer.parseInt(userIdAttr.toString());
-        
-        PaymentEntity existingPayment = paymentService.findById(id);
-        if (existingPayment == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        // Verify the user owns the request associated with this payment
-        RequestsEntity requestEntity = requestsService.findById(existingPayment.getRequestId());
-        if (requestEntity.getUserId().intValue() != authenticatedUserId) {
-            return ResponseEntity.status(403).body(Map.of("message", "Forbidden: You can only delete payments for your own requests"));
-        }
-
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable int id) {
         paymentService.delete(id);
-        return ResponseEntity.noContent().build();
     }
 }
 
