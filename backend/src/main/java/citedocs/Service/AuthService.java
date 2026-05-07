@@ -1,5 +1,7 @@
 package citedocs.Service;
 
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,9 +14,11 @@ import citedocs.Repository.UserRepository;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public AuthService(UserRepository userRepository) {
         this.userRepository = userRepository;
+        this.passwordEncoder = new BCryptPasswordEncoder();
     }
 
     // ========================================================
@@ -25,8 +29,30 @@ public class AuthService {
 
         if (user == null) return null;
 
-        // NOTE: plaintext check (you can add hashing later)
-        if (!user.getPassword().equals(password)) return null;
+        String storedPassword = user.getPassword();
+        boolean passwordMatches = false;
+
+        // Check if password is already hashed (BCrypt hashes start with $2a$, $2b$, or $2y$)
+        if (storedPassword != null && (storedPassword.startsWith("$2a$") || 
+                                       storedPassword.startsWith("$2b$") || 
+                                       storedPassword.startsWith("$2y$"))) {
+            // Password is hashed, use BCrypt to verify
+            passwordMatches = passwordEncoder.matches(password, storedPassword);
+        } else {
+            // Legacy plaintext password - compare directly
+            // Then automatically upgrade to hashed password
+            passwordMatches = storedPassword != null && storedPassword.equals(password);
+            
+            if (passwordMatches) {
+                // Upgrade plaintext password to BCrypt hash
+                user.setPassword(passwordEncoder.encode(password));
+                userRepository.save(user);
+            }
+        }
+
+        if (!passwordMatches) {
+            return null;
+        }
 
         return user;
     }
@@ -52,7 +78,8 @@ public class AuthService {
         UserEntity newUser = new UserEntity();
         newUser.setName(fullName);
         newUser.setEmail(email);
-        newUser.setPassword(password);
+        // Hash password before storing
+        newUser.setPassword(passwordEncoder.encode(password));
         newUser.setRole(role);
 
         // Assign ID based on role

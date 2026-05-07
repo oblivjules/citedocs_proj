@@ -7,6 +7,7 @@ import citedocs.Security.JwtUtil;
 import citedocs.Service.AuthService;
 import citedocs.Entity.UserEntity;
 import citedocs.Entity.UserEntity.Role;
+import citedocs.DTO.UserDTO;
 
 import java.util.Map;
 
@@ -27,24 +28,46 @@ public class AuthController {
     // ======================================================
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
+        try {
+            String email = body.get("email");
+            String password = body.get("password");
 
-        String email = body.get("email");
-        String password = body.get("password");
+            // Validate input
+            if (email == null || email.trim().isEmpty()) {
+                return ResponseEntity.status(400).body(Map.of(
+                        "message", "Email is required"
+                ));
+            }
 
-        UserEntity user = authService.authenticate(email, password);
+            if (password == null || password.trim().isEmpty()) {
+                return ResponseEntity.status(400).body(Map.of(
+                        "message", "Password is required"
+                ));
+            }
 
-        if (user == null) {
-            return ResponseEntity.status(401).body(Map.of(
-                    "message", "Invalid credentials"
+            UserEntity user = authService.authenticate(email.trim(), password);
+
+            if (user == null) {
+                return ResponseEntity.status(401).body(Map.of(
+                        "message", "Invalid email or password"
+                ));
+            }
+
+            String token = jwtUtil.generateToken(String.valueOf(user.getUserId()));
+
+            // Return UserDTO instead of UserEntity to exclude sensitive data
+            UserDTO userDTO = new UserDTO(user);
+
+            return ResponseEntity.ok(Map.of(
+                    "token", token,
+                    "user", userDTO
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of(
+                    "message", "An error occurred during login",
+                    "error", e.getMessage()
             ));
         }
-
-        String token = jwtUtil.generateToken(String.valueOf(user.getUserId()));
-
-        return ResponseEntity.ok(Map.of(
-                "token", token,
-                "user", user
-        ));
     }
 
     // ======================================================
@@ -75,9 +98,12 @@ public class AuthController {
                     adminId
             );
 
+            // Return UserDTO instead of UserEntity to exclude sensitive data
+            UserDTO userDTO = new UserDTO(user);
+
             return ResponseEntity.ok(Map.of(
                     "message", "Registration successful",
-                    "user", user
+                    "user", userDTO
             ));
 
         } catch (RuntimeException e) {

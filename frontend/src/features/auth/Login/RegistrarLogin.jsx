@@ -49,7 +49,9 @@ export default function RegistrarLogin() {
       navigate("/registrar", { replace: true });
 
     } catch (error) {
-      setBackendError("Invalid email or password.");
+      // Display the actual error message from the backend
+      setBackendError(error.message || "Invalid email or password.");
+      console.error("Login error:", error);
     }
   };
 

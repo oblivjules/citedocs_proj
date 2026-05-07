@@ -5,6 +5,21 @@ import { logout as serviceLogout } from "../services/authService"; // optional i
 
 const AuthContext = createContext();
 
+/**
+ * Sanitizes user data to remove any sensitive fields
+ */
+function sanitizeUserData(user) {
+  if (!user) return null;
+  
+  const safeUser = { ...user };
+  // Explicitly remove sensitive fields
+  delete safeUser.password;
+  delete safeUser.passwordHash;
+  delete safeUser.token;
+  
+  return safeUser;
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -23,7 +38,13 @@ export function AuthProvider({ children }) {
 
       try {
         const res = await api.get("/users/me");
-        setUser(res.data);
+        // Sanitize user data before setting it
+        const safeUser = sanitizeUserData(res.data);
+        setUser(safeUser);
+        // Update localStorage with sanitized data
+        if (safeUser) {
+          localStorage.setItem("user", JSON.stringify(safeUser));
+        }
       } catch (err) {
         console.warn("Session expired or invalid token.");
         localStorage.removeItem("token");
@@ -38,7 +59,9 @@ export function AuthProvider({ children }) {
 
   // Called after successful login
   function loginContext(userData) {
-    setUser(userData);
+    // Sanitize user data before setting it
+    const safeUser = sanitizeUserData(userData);
+    setUser(safeUser);
   }
 
   // Keep old name too
